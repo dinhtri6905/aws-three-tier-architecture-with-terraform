@@ -1,0 +1,37 @@
+# ======================
+# TERRAFORM
+# ======================
+
+# State files
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Thư mục .terraform — chứa provider binaries
+.terraform/
+.terraform.tfstate
+
+# Override files — local only
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Crash log
+crash.log
+crash.*.log
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+
+# Generated plan files
+*.tfplan
+
+# ======================
+# IDE / OS
+# ======================
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
