@@ -35,4 +35,18 @@ Database Tier (RDS Private)
 ```
 ---
 
+### Integrated GitHub Actions CI/CD pipeline with:
+- TFLint for Terraform linting
+- tfsec for infrastructure security scanning
+- Checkov for CIS compliance validation
+- OPA/Rego for policy-as-code enforcement
 
+```bash
+| Tool     | Vai trò trong CI/CD                                                                    |
+| -------- | -------------------------------------------------------------------------------------- |
+| TFLint   | Kiểm tra Terraform syntax, AWS best practice, phát hiện cấu hình sai                   |
+| tfsec    | Quét lỗi bảo mật cho Infrastructure as Code                                            |
+| Checkov  | Quét security và compliance, hỗ trợ nhiều framework như AWS Foundations, NIST, PCI DSS |
+| OPA/Rego | Policy as Code, tự định nghĩa quy tắc và chính sách tổ chức                            |
+
+```
