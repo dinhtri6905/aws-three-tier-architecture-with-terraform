@@ -55,6 +55,15 @@ module "autoscaling" {
   project_name = var.project_name
   environment = var.environment
 
+  ami_id = var.ami_id
+  instance_type = var.instance_type
+  ec2_security_group_id = module.security-group.ec2_security_group_id
+
+  app_subnet_ids = module.vpc.app_subnet_ids
+  target_group_arn = module.alb.target_group_arn
+  desired_capacity = var.desired_capacity // chưa có 
+  min_size = var.min_size //chưa có
+  max_size = var.max_size // chưa có
 }
 
 # ===== MODULE: RDS =====

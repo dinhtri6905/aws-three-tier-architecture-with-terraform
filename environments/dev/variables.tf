@@ -89,7 +89,23 @@ variable "instance_type" {
 }
 
 # ========== AUTOSCALING ==========
+variable "desired_capacity" {
+    description = "Desired number of EC2 instances"
+    type = number
+    default = 2
+}
 
+variable "min_size" {
+    description = "Minimum number of EC2 instances"
+    type = number
+    default = 2
+}
+
+variable "max_size" {
+    description = "Maximum number of EC2 instances"
+    type = number
+    default = 4
+}
 
 # ========== RDS ==========
 
