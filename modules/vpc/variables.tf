@@ -19,12 +19,12 @@ variable "vpc_cidr" {
   type = list(string)
 }
 
-variable "app_subnets_cidrs" {
+variable "app_subnet_cidrs" {
   description = "Application subnet CIDR blocks"
   type = list(string)
 }
 
-variable "db_subnets_cidrs" {
+variable "db_subnet_cidrs" {
   description = "Database subnet CIDR blocks"
   type = list(string)
 }
