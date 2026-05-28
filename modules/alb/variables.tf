@@ -15,10 +15,12 @@ variable "vpc_id" {
 }
 
 variable "public_subnet_ids" {
-  
+    description = "Public subnet IDs for ALB"
+    type = list(string)
 }
 
 variable "alb_security_group_id" {
-  
+  description = "Security Group ID for Application Load Balancer"
+  type = string
 }
 

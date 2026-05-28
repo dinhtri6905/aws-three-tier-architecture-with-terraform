@@ -13,7 +13,7 @@ resource "aws_vpc" "main" {
   }
 }
 
-# ===== Internet Gateway =====
+# ===== INTERNET GATEWAY =====
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -22,7 +22,7 @@ resource "aws_internet_gateway" "main" {
   }
 }
 
-# ===== Public Subnets =====
+# ===== PUBLIC SUBNETS =====
 resource "aws_subnet" "public" {
   count = length(var.availability_zones)
 
@@ -37,7 +37,7 @@ resource "aws_subnet" "public" {
   }
 }
 
-# ===== Private APP Subnets =====
+# ===== PRIVATE APP SUBNETS =====
 resource "aws_subnet" "app" {
   count = length(var.availability_zones)
 
@@ -51,7 +51,7 @@ resource "aws_subnet" "app" {
     }
 }
 
-# ===== Private DB Subnets =====
+# ===== PRIVATE DB SUBNETS =====
 resource "aws_subnet" "db" {
   count = length(var.availability_zones)
 
@@ -112,7 +112,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# ===== Private App Route Table =====
+# ===== PRIVATE APP ROUTE TABLE =====
 resource "aws_route_table" "app" {
     count = length(var.availability_zones)
     vpc_id = aws_vpc.main.id
@@ -134,7 +134,7 @@ resource "aws_route_table_association" "app" {
   route_table_id = aws_route_table.app[count.index].id
 }
 
-# ===== Private DB Route Table =====
+# ===== PRIVATE DB ROUTE TABLE =====
 resource "aws_route_table" "db" {
     vpc_id = aws_vpc.main.id
 
