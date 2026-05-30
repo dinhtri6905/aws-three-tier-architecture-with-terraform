@@ -79,7 +79,7 @@ AWS-Three-Tier-Architecture
 │
 ├── .github
 │   └── workflows
-│       ├── terraform-pr.yml
+│       ├── terraform-pull-request.yml
 │       └── terraform-deploy.yml
 │
 ├── backend
