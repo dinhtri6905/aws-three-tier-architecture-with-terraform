@@ -29,7 +29,7 @@ resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_cidrs[count.index]
   availability_zone       = var.availability_zones[count.index]
-  map_public_ip_on_launch = true 
+  map_public_ip_on_launch = true
 
   tags = {
     Name = "${local.name_prefix}-public-subnet-${count.index + 1}"
@@ -41,28 +41,28 @@ resource "aws_subnet" "public" {
 resource "aws_subnet" "app" {
   count = length(var.availability_zones)
 
-    vpc_id = aws_vpc.main.id
-    cidr_block = var.app_subnet_cidrs[count.index]
-    availability_zone = var.availability_zones[count.index]
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.app_subnet_cidrs[count.index]
+  availability_zone = var.availability_zones[count.index]
 
-    tags = {
-      Name = "${local.name_prefix}-app-subnet-${count.index + 1}"
-      Tier = "Application"
-    }
+  tags = {
+    Name = "${local.name_prefix}-app-subnet-${count.index + 1}"
+    Tier = "Application"
+  }
 }
 
 # ===== PRIVATE DB SUBNETS =====
 resource "aws_subnet" "db" {
   count = length(var.availability_zones)
 
-    vpc_id = aws_vpc.main.id
-    cidr_block = var.db_subnet_cidrs[count.index]
-    availability_zone = var.availability_zones[count.index]
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.db_subnet_cidrs[count.index]
+  availability_zone = var.availability_zones[count.index]
 
-    tags = {
-      Name = "${local.name_prefix}-db-subnet-${count.index + 1}"
-      Tier = "Database"
-    }
+  tags = {
+    Name = "${local.name_prefix}-db-subnet-${count.index + 1}"
+    Tier = "Database"
+  }
 }
 
 # ===== ELASTIC IPs cho NAT GATEWAYS =====
@@ -114,17 +114,17 @@ resource "aws_route_table_association" "public" {
 
 # ===== PRIVATE APP ROUTE TABLE =====
 resource "aws_route_table" "app" {
-    count = length(var.availability_zones)
-    vpc_id = aws_vpc.main.id
+  count  = length(var.availability_zones)
+  vpc_id = aws_vpc.main.id
 
-    route {
-        cidr_block = "0.0.0.0/0"
-        nat_gateway_id = aws_nat_gateway.main[count.index].id
-    }
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main[count.index].id
+  }
 
-    tags = {
-        Name = "${local.name_prefix}-app-rt-${count.index + 1}"
-    }
+  tags = {
+    Name = "${local.name_prefix}-app-rt-${count.index + 1}"
+  }
 }
 
 resource "aws_route_table_association" "app" {
@@ -136,11 +136,11 @@ resource "aws_route_table_association" "app" {
 
 # ===== PRIVATE DB ROUTE TABLE =====
 resource "aws_route_table" "db" {
-    vpc_id = aws_vpc.main.id
+  vpc_id = aws_vpc.main.id
 
-    tags = {
-        Name = "${local.name_prefix}-db-rt"
-    }
+  tags = {
+    Name = "${local.name_prefix}-db-rt"
+  }
 }
 
 resource "aws_route_table_association" "db" {
