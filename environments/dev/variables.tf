@@ -1,32 +1,32 @@
 # ========== GENERAL ==========
 variable "project_name" {
   description = "Project Name"
-  type = string
-  default = "three-tier"
+  type        = string
+  default     = "three-tier"
 }
 
 variable "environment" {
   description = "Deploy Environment"
-  type = string
-  default = "dev"
+  type        = string
+  default     = "dev"
 }
 
 variable "aws_region" {
   description = "AWS Region"
-  type = string
-  default = "ap-southeast-1"
+  type        = string
+  default     = "ap-southeast-1"
 }
 
 # ========== VPC ==========
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
-  type = string
-  default = "10.0.0.0/16"
+  type        = string
+  default     = "10.0.0.0/16"
 }
 
-  variable "public_subnet_cidrs" {
+variable "public_subnet_cidrs" {
   description = "Public subnet CIDR blocks"
-  type = list(string)
+  type        = list(string)
 
   default = [
     "10.0.1.0/24",
@@ -37,7 +37,7 @@ variable "vpc_cidr" {
 
 variable "app_subnets_cidrs" {
   description = "Application subnet CIDR blocks"
-  type = list(string)
+  type        = list(string)
 
   default = [
     "10.0.11.0/24",
@@ -48,7 +48,7 @@ variable "app_subnets_cidrs" {
 
 variable "db_subnets_cidrs" {
   description = "Database subnet CIDR blocks"
-  type = list(string)
+  type        = list(string)
 
   default = [
     "10.0.21.0/24",
@@ -59,7 +59,7 @@ variable "db_subnets_cidrs" {
 
 variable "availability_zones" {
   description = "Availability Zones"
-  type = list(string)
+  type        = list(string)
 
   default = [
     "ap-southeast-1a",
@@ -78,76 +78,76 @@ variable "availability_zones" {
 variable "ami_id" {
   description = "AMI ID for EC2 instances"
   type        = string
-  default = "ami-0543dbdaf4e114be7"
+  default     = "ami-0543dbdaf4e114be7"
 }
 # ami = ami-0543dbdaf4e114be7 / ami-0d105bf3c7d10a264
 
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
-  default = "t3.micro"
+  default     = "t3.micro"
 }
 
 # ========== AUTOSCALING ==========
 variable "desired_capacity" {
-    description = "Desired number of EC2 instances"
-    type = number
-    default = 2
+  description = "Desired number of EC2 instances"
+  type        = number
+  default     = 2
 }
 
 variable "min_size" {
-    description = "Minimum number of EC2 instances"
-    type = number
-    default = 2
+  description = "Minimum number of EC2 instances"
+  type        = number
+  default     = 2
 }
 
 variable "max_size" {
-    description = "Maximum number of EC2 instances"
-    type = number
-    default = 4
+  description = "Maximum number of EC2 instances"
+  type        = number
+  default     = 4
 }
 
 # ========== RDS ==========
 variable "db_instance_class" {
   description = "RDS instance class"
-  type = string
-  default = "db.t3.micro"
+  type        = string
+  default     = "db.t3.micro"
 }
 
 variable "allocated_storage" {
   description = "Initial allocated storage (GB)"
-  type = number
-  default = 20
+  type        = number
+  default     = 20
 }
 
 variable "max_allocated_storage" {
   description = "Maximum autoscaling storage (GB)"
-  type = number
-  default = 100
+  type        = number
+  default     = 100
 }
 
 variable "database_name" {
   description = "Database name"
-  type = string
-  default = "db-three-tier"
+  type        = string
+  default     = "db-three-tier"
 }
 
 variable "database_username" {
   description = "Database master username"
-  type = string
-  default = "admin"
+  type        = string
+  default     = "admin"
 }
 
 variable "database_password" {
   description = "Database master password"
-  type = string
-  sensitive = true
+  type        = string
+  sensitive   = true
 }
 
 variable "multi_az" {
   description = "Enable Multi-AZ deployment"
-  type = bool
-  default = false
+  type        = bool
+  default     = false
 }
 
 

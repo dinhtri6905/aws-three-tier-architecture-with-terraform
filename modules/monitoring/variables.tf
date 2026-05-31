@@ -1,12 +1,12 @@
 variable "project_name" {
   description = "Project Name"
-  type = string
+  type        = string
 }
 
 variable "environment" {
   description = "Deploy Environment"
-  type = string
-  default = "dev"
+  type        = string
+  default     = "dev"
 }
 
 

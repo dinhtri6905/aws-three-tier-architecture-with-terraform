@@ -7,35 +7,35 @@ locals {
 
 # ===== SECURITY GROUP: APPLICATION LOAD BALANCER =====
 resource "aws_security_group" "alb" {
-    name = "${local.name_prefix}-alb-sg"
-    description = "Security Group for Application Load Balancer"
-    vpc_id = var.vpc_id
+  name        = "${local.name_prefix}-alb-sg"
+  description = "Security Group for Application Load Balancer"
+  vpc_id      = var.vpc_id
 
-    tags = {
-        Name = "${local.name_prefix}-alb-sg"
-    }
+  tags = {
+    Name = "${local.name_prefix}-alb-sg"
+  }
 }
 
 # ===== SECURITY GROUP: APPLICATION EC2 =====
 resource "aws_security_group" "ec2" {
-    name = "${local.name_prefix}-ec2-sg"
-    description = "Security Group for Application EC2"
-    vpc_id = var.vpc_id
+  name        = "${local.name_prefix}-ec2-sg"
+  description = "Security Group for Application EC2"
+  vpc_id      = var.vpc_id
 
-    tags = {
-        Name = "${local.name_prefix}-ec2-sg"
-    }
+  tags = {
+    Name = "${local.name_prefix}-ec2-sg"
+  }
 }
 
 # ===== SECURITY GROUP: RDS DATABASE =====
 resource "aws_security_group" "rds" {
-    name = "${local.name_prefix}-rds-sg"
-    description = "Security Group for RDS Database"
-    vpc_id = var.vpc_id
+  name        = "${local.name_prefix}-rds-sg"
+  description = "Security Group for RDS Database"
+  vpc_id      = var.vpc_id
 
-    tags = {
-        Name = "${local.name_prefix}-rds-sg"
-    }
+  tags = {
+    Name = "${local.name_prefix}-rds-sg"
+  }
 }
 # ============================================================
 # RULES: ALB SECURITY GROUP
@@ -43,35 +43,35 @@ resource "aws_security_group" "rds" {
 
 # ===== Internet -> ALB HTTP =====
 resource "aws_security_group_rule" "alb_ingress_http" {
-    type = "ingress"
-    description = "Allow HTTP from Internet"
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
-    security_group_id = aws_security_group.alb.id
-    cidr_blocks = ["0.0.0.0/0"]
+  type              = "ingress"
+  description       = "Allow HTTP from Internet"
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+  security_group_id = aws_security_group.alb.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 # ===== Internet -> ALB HTTPS =====
 resource "aws_security_group_rule" "alb_ingress_https" {
-    type = "ingress"
-    description = "Allow HTTPS from Internet"
-    from_port = 443
-    to_port = 443
-    protocol = "tcp"
-    security_group_id = aws_security_group.alb.id
-    cidr_blocks = ["0.0.0.0/0"]
+  type              = "ingress"
+  description       = "Allow HTTPS from Internet"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  security_group_id = aws_security_group.alb.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 # ===== ALB -> outbound =====
 resource "aws_security_group_rule" "alb_egress_all" {
-    type = "egress"
-    description = "Allow outbound traffic"
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    security_group_id = aws_security_group.alb.id
-    cidr_blocks = ["0.0.0.0/0"]
+  type              = "egress"
+  description       = "Allow outbound traffic"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  security_group_id = aws_security_group.alb.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 # ============================================================
@@ -80,24 +80,24 @@ resource "aws_security_group_rule" "alb_egress_all" {
 
 # ===== ALB -> EC2 HTTP =====
 resource "aws_security_group_rule" "ec2_ingress_http_from_alb" {
-    type = "ingress"
-    description = "Allow HTTP from ALB"
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
-    security_group_id = aws_security_group.ec2.id
-    source_security_group_id = aws_security_group.alb.id
+  type                     = "ingress"
+  description              = "Allow HTTP from ALB"
+  from_port                = 80
+  to_port                  = 80
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ec2.id
+  source_security_group_id = aws_security_group.alb.id
 }
 
 # ===== ALB -> EC2 HTTPS =====
 resource "aws_security_group_rule" "ec2_ingress_https_from_alb" {
-    type = "ingress"
-    description = "Allow HTTPS from ALB"
-    from_port = 443
-    to_port = 443
-    protocol = "tcp"
-    security_group_id = aws_security_group.ec2.id
-    source_security_group_id = aws_security_group.alb.id
+  type                     = "ingress"
+  description              = "Allow HTTPS from ALB"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ec2.id
+  source_security_group_id = aws_security_group.alb.id
 }
 
 
@@ -117,13 +117,13 @@ resource "aws_security_group_rule" "ec2_ingress_https_from_alb" {
 
 # ===== EC2 -> outbound =====
 resource "aws_security_group_rule" "ec2_egress_all" {
-    type = "egress"
-    description = "Allow outbound traffic"
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    security_group_id = aws_security_group.ec2.id
-    cidr_blocks = ["0.0.0.0/0"]
+  type              = "egress"
+  description       = "Allow outbound traffic"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  security_group_id = aws_security_group.ec2.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 # ============================================================
@@ -132,24 +132,24 @@ resource "aws_security_group_rule" "ec2_egress_all" {
 
 # ===== EC2 -> RDS MySQL =====
 resource "aws_security_group_rule" "rds_ingress_mysql" {
-    type = "ingress"
-    description = "Allow MySQL from EC2"
-    from_port = 3306
-    to_port = 3306
-    protocol = "tcp"
-    security_group_id = aws_security_group.rds.id
-    source_security_group_id = aws_security_group.ec2.id
+  type                     = "ingress"
+  description              = "Allow MySQL from EC2"
+  from_port                = 3306
+  to_port                  = 3306
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.rds.id
+  source_security_group_id = aws_security_group.ec2.id
 }
 
 # ===== RDS outbound =====
 resource "aws_security_group_rule" "rds_egress_all" {
-    type = "egress"
-    description = "Allow outbound traffic"
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
-    security_group_id = aws_security_group.rds.id
-    cidr_blocks = ["0.0.0.0/0"]
+  type              = "egress"
+  description       = "Allow outbound traffic"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  security_group_id = aws_security_group.rds.id
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 

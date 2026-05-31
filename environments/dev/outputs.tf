@@ -29,12 +29,7 @@ output "alb_security_group_id" {
   value       = module.security-group.alb_security_group_id
 }
 
-output "web_security_group_id" {
-  description = "Web Tier Security Group ID"
-  value       = module.security-group.web_security_group_id
-}
-
-output "app_security_group_id" {
+output "ec2_security_group_id" {
   description = "Application Tier Security Group ID"
   value       = module.security-group.app_security_group_id
 }
@@ -93,10 +88,10 @@ output "rds_endpoint" {
 
 output "rds_identifier" {
   description = "RDS Identifier"
-  value       = module.rds.rds_identifier
+  value       = module.rds.rds_instance_id
 }
 
 output "rds_arn" {
   description = "RDS ARN"
-  value       = module.rds.rds_arn
+  value       = module.rds.rds_instance_arn
 }

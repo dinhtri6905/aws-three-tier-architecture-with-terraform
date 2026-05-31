@@ -1,35 +1,35 @@
 variable "project_name" {
   description = "Project Name"
-  type = string
+  type        = string
 }
 
 variable "environment" {
   description = "Deploy Environment"
-  type = string
-  default = "dev"
+  type        = string
+  default     = "dev"
 }
 
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
-  type = string
+  type        = string
 }
 
-  variable "public_subnet_cidrs" {
+variable "public_subnet_cidrs" {
   description = "Public subnet CIDR blocks"
-  type = list(string)
+  type        = list(string)
 }
 
 variable "app_subnet_cidrs" {
   description = "Application subnet CIDR blocks"
-  type = list(string)
+  type        = list(string)
 }
 
 variable "db_subnet_cidrs" {
   description = "Database subnet CIDR blocks"
-  type = list(string)
+  type        = list(string)
 }
 
 variable "availability_zones" {
   description = "Availability Zones"
-  type = list(string)
+  type        = list(string)
 }
