@@ -119,13 +119,13 @@ module "monitoring" {
   asg_cpu_high_threshold = var.asg_cpu_high_threshold
   asg_cpu_low_threshold  = var.asg_cpu_low_threshold
 
-  # Data tier — lay tu output cua module rds
-  rds_instance_id            = module.rds.db_instance_id
+  # Data tier
+  rds_instance_id            = module.rds.rds_instance_id
   rds_cpu_high_threshold     = var.rds_cpu_high_threshold
   rds_free_storage_threshold = var.rds_free_storage_threshold
   rds_connections_threshold  = var.rds_connections_threshold
 
-  # Web tier — lay tu output cua module alb
+  # Web tier
   alb_arn_suffix              = module.alb.alb_arn_suffix
   target_group_arn_suffix     = module.alb.target_group_arn_suffix
   alb_5xx_threshold           = var.alb_5xx_threshold
