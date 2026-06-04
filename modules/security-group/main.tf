@@ -7,6 +7,8 @@ locals {
 
 # ===== SECURITY GROUP: APPLICATION LOAD BALANCER =====
 resource "aws_security_group" "alb" {
+  #checkov:skip=CKV2_AWS_5: Security group attached in downstream modules
+
   name        = "${local.name_prefix}-alb-sg"
   description = "Security Group for Application Load Balancer"
   vpc_id      = var.vpc_id
@@ -18,6 +20,8 @@ resource "aws_security_group" "alb" {
 
 # ===== SECURITY GROUP: APPLICATION EC2 =====
 resource "aws_security_group" "ec2" {
+  #checkov:skip=CKV2_AWS_5: Security group attached in downstream modules
+
   name        = "${local.name_prefix}-ec2-sg"
   description = "Security Group for Application EC2"
   vpc_id      = var.vpc_id
@@ -29,6 +33,8 @@ resource "aws_security_group" "ec2" {
 
 # ===== SECURITY GROUP: RDS DATABASE =====
 resource "aws_security_group" "rds" {
+  #checkov:skip=CKV2_AWS_5: Security group attached in downstream modules
+
   name        = "${local.name_prefix}-rds-sg"
   description = "Security Group for RDS Database"
   vpc_id      = var.vpc_id
@@ -43,6 +49,8 @@ resource "aws_security_group" "rds" {
 
 # ===== Internet -> ALB HTTP =====
 resource "aws_security_group_rule" "alb_ingress_http" {
+  #checkov:skip=CKV_AWS_260: Public ALB requires HTTP access from Internet in lab environment
+
   type              = "ingress"
   description       = "Allow HTTP from Internet"
   from_port         = 80
@@ -65,6 +73,8 @@ resource "aws_security_group_rule" "alb_ingress_https" {
 
 # ===== ALB -> outbound =====
 resource "aws_security_group_rule" "alb_egress_all" {
+  #checkov:skip=CKV_AWS_382: Wide egress required for lab environment
+
   type              = "egress"
   description       = "Allow outbound traffic"
   from_port         = 0
@@ -117,6 +127,8 @@ resource "aws_security_group_rule" "ec2_ingress_https_from_alb" {
 
 # ===== EC2 -> outbound =====
 resource "aws_security_group_rule" "ec2_egress_all" {
+  #checkov:skip=CKV_AWS_382: Wide egress required for lab environment
+
   type              = "egress"
   description       = "Allow outbound traffic"
   from_port         = 0
@@ -143,6 +155,8 @@ resource "aws_security_group_rule" "rds_ingress_mysql" {
 
 # ===== RDS outbound =====
 resource "aws_security_group_rule" "rds_egress_all" {
+  #checkov:skip=CKV_AWS_382: Wide egress required for lab environment
+  
   type              = "egress"
   description       = "Allow outbound traffic"
   from_port         = 0
