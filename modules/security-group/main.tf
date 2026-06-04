@@ -50,7 +50,6 @@ resource "aws_security_group" "rds" {
 # ===== Internet -> ALB HTTP =====
 resource "aws_security_group_rule" "alb_ingress_http" {
   #checkov:skip=CKV_AWS_260: Public ALB requires HTTP access from Internet in lab environment
-  #checkov:skip=CKV_AWS_382: Wide egress allowed for lab environment
 
   type              = "ingress"
   description       = "Allow HTTP from Internet"
@@ -74,6 +73,8 @@ resource "aws_security_group_rule" "alb_ingress_https" {
 
 # ===== ALB -> outbound =====
 resource "aws_security_group_rule" "alb_egress_all" {
+  #checkov:skip=CKV_AWS_382: Wide egress required for lab environment
+
   type              = "egress"
   description       = "Allow outbound traffic"
   from_port         = 0
@@ -126,6 +127,8 @@ resource "aws_security_group_rule" "ec2_ingress_https_from_alb" {
 
 # ===== EC2 -> outbound =====
 resource "aws_security_group_rule" "ec2_egress_all" {
+  #checkov:skip=CKV_AWS_382: Wide egress required for lab environment
+
   type              = "egress"
   description       = "Allow outbound traffic"
   from_port         = 0
@@ -152,6 +155,8 @@ resource "aws_security_group_rule" "rds_ingress_mysql" {
 
 # ===== RDS outbound =====
 resource "aws_security_group_rule" "rds_egress_all" {
+  #checkov:skip=CKV_AWS_382: Wide egress required for lab environment
+  
   type              = "egress"
   description       = "Allow outbound traffic"
   from_port         = 0

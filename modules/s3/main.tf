@@ -8,6 +8,8 @@ locals {
 resource "aws_s3_bucket" "alb_logs" {
   #checkov:skip=CKV_AWS_18: Access logging bucket does not require self logging
   #checkov:skip=CKV_AWS_144: Cross region replication not required for lab environment
+  #checkov:skip=CKV2_AWS_62: Event notifications not required for ALB log bucket
+  #checkov:skip=CKV_AWS_145: AES256 encryption sufficient for lab environment
 
   bucket = "${local.name_prefix}-alb-logs"
 
@@ -39,6 +41,19 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "expire_old_logs"
+    status = "Enabled"
+
+    expiration {
+      days = 30
     }
   }
 }
