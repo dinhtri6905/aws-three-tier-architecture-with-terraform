@@ -34,6 +34,7 @@ env:
   AWS_REGION: ap-southeast-1
   TERRAFORM_VERSION: 1.8.0
   BUCKET_TF_STATE: ${{ secrets.BUCKET_TF_STATE }}
+  # TF_VAR_database_password: ${{ secrets.DB_PASSWORD }}
 
 # =============================================================================
 # JOB 1: OPA Full Scan
@@ -80,7 +81,7 @@ jobs:
             -no-color \
             -input=false
         env:
-          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+           TF_VAR_database_password: ${{ secrets.DB_PASSWORD }}
 
       - name: Export plan to JSON
         run: |
