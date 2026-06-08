@@ -7,6 +7,7 @@ resource "aws_lb" "main" {
   #checkov:skip=CKV_AWS_150: Deletion protection disabled for lab environment
   #checkov:skip=CKV2_AWS_20: HTTPS redirect not required in lab environment
   #checkov:skip=CKV2_AWS_28: AWS WAF not required for lab environment
+  #checkov:skip=CKV_AWS_91: ALB access logging disabled for lab environment
 
   name               = "${local.name_prefix}-alb"
   internal           = false
