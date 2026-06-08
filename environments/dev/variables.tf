@@ -143,7 +143,7 @@ variable "max_allocated_storage" {
 variable "database_name" {
   description = "Database name"
   type        = string
-  default     = "db-three-tier"
+  default     = "dbthreetier"
 }
 
 variable "database_username" {

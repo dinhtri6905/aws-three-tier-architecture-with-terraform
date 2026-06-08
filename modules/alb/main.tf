@@ -7,6 +7,7 @@ resource "aws_lb" "main" {
   #checkov:skip=CKV_AWS_150: Deletion protection disabled for lab environment
   #checkov:skip=CKV2_AWS_20: HTTPS redirect not required in lab environment
   #checkov:skip=CKV2_AWS_28: AWS WAF not required for lab environment
+  #checkov:skip=CKV_AWS_91: ALB access logging disabled for lab environment
 
   name               = "${local.name_prefix}-alb"
   internal           = false
@@ -17,11 +18,11 @@ resource "aws_lb" "main" {
 
   drop_invalid_header_fields = true # Check: CKV_AWS_131: "Ensure that ALB drops HTTP headers"
 
-  access_logs {
-    bucket  = var.alb_logs_id
-    prefix  = "alb"
-    enabled = true
-  }
+  # access_logs {
+  #   bucket  = var.alb_logs_id
+  #   prefix  = "alb"
+  #   enabled = true
+  # }
 
   enable_deletion_protection = false
 

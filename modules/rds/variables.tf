@@ -39,13 +39,11 @@ variable "max_allocated_storage" {
 variable "database_name" {
   description = "Database name"
   type        = string
-  default     = "db-three-tier"
 }
 
 variable "database_username" {
   description = "Database master username"
   type        = string
-  default     = "admin"
 }
 
 variable "database_password" {
