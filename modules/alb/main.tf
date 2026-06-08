@@ -17,11 +17,11 @@ resource "aws_lb" "main" {
 
   drop_invalid_header_fields = true # Check: CKV_AWS_131: "Ensure that ALB drops HTTP headers"
 
-  access_logs {
-    bucket  = var.alb_logs_id
-    prefix  = "alb"
-    enabled = true
-  }
+  # access_logs {
+  #   bucket  = var.alb_logs_id
+  #   prefix  = "alb"
+  #   enabled = true
+  # }
 
   enable_deletion_protection = false
 

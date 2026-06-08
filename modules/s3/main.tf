@@ -64,26 +64,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
   }
 }
 
-# resource "aws_s3_bucket_policy" "alb_logs" {
-#   bucket = aws_s3_bucket.alb_logs.id
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
 
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Sid    = "AWSALBLogs"
-#         Effect = "Allow"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AWSALBLogs"
+        Effect = "Allow"
 
-#         Principal = {
-#           Service = "logdelivery.elasticloadbalancing.amazonaws.com"
-#         }
+        Principal = {
+          Service = "logdelivery.elasticloadbalancing.amazonaws.com"
+        }
 
-#         Action = [
-#           "s3:PutObject"
-#         ]
+        Action = [
+          "s3:PutObject"
+        ]
 
-#         Resource = "${aws_s3_bucket.alb_logs.arn}/AWSLogs/*"
-#       }
-#     ]
-#   })
-# }
+        Resource = "${aws_s3_bucket.alb_logs.arn}/AWSLogs/*"
+      }
+    ]
+  })
+}
