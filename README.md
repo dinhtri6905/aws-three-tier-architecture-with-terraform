@@ -96,7 +96,8 @@ AWS-Three-Tier-Architecture/
 │   └── workflows/
 │       ├── terraform-ci.yml       # Static checks — không cần AWS credentials
 │       ├── terraform-cd.yml       # Plan → OPA gate → Apply / Destroy
-│       └── check-scan.yml         # Quét bảo mật định kỳ hàng ngày
+│       ├── check-scan.yml         # Quét bảo mật định kỳ hàng ngày
+│       └── CICD-GUIDE.md          # Hướng dẫn setup và vận hành chi tiết
 │
 ├── environments/
 │   ├── dev/
@@ -125,14 +126,13 @@ AWS-Three-Tier-Architecture/
 │   ├── networking.rego            # VPC, subnet isolation, ALB, routing
 │   └── compliance.rego            # CIS Benchmark v1.5.0 + Tagging policy
 │
-├── CICD-GUIDE.md                  # Hướng dẫn setup và vận hành chi tiết
 ├── PROJECT.md
 └── README.md
 ```
 
 ---
 
-## CI/CD Pipeline
+## CI/CD Pipeline & OPA/Rego Policies
 
 ```bash
 Workflow Files
@@ -327,7 +327,12 @@ Xem `CICD-GUIDE.md` để biết cách tạo từng mục trên theo thứ tự 
 ### 1. Tạo S3 backend và DynamoDB lock table
 
 ```bash
-##### TẠO BẰNG CLI #####
+###########################################################
+### CÓ 2 CÁCH TẠO ĐƯỢC HƯỚNG DẪN ###
+########################################################### 
+
+##### TẠO BẰNG CLI #####  
+@@ Cái này nên vào .github/workflows/CICD-GUIDE.md sẽ rõ hơn 
 # Tạo S3 bucket 
 aws s3api create-bucket \
   --bucket <tên-bucket> \
