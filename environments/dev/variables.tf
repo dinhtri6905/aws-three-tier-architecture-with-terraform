@@ -84,6 +84,11 @@ variable "certificate_arn" {
   description = "ARN of the ACM certificate used for the HTTPS listener. Leave empty to keep HTTP-only (e.g. dev/lab). When set, an HTTPS listener (443) is created and HTTP (80) redirects to it."
   type        = string
   default     = ""
+  # HTTP requests on port 80 are permanently redirected to HTTPS (443).
+  # A valid ACM certificate is required for the HTTPS listener.
+
+  # To create an ACM certificate:
+  # AWS Console → Certificate Manager → Request Certificate
 }
 
 variable "ssl_policy" {
