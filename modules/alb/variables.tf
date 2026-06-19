@@ -27,3 +27,13 @@ variable "alb_logs_id" {
   description = "ID of the S3 Bucket for ALB access logs"
   type        = string
 }
+
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate used for the HTTPS listener. Leave empty to keep HTTP-only (e.g. dev/lab). When set, an HTTPS listener (443) is created and HTTP (80) redirects to it."
+  type        = string
+}
+
+variable "ssl_policy" {
+  description = "SSL security policy for the HTTPS listener"
+  type        = string
+}

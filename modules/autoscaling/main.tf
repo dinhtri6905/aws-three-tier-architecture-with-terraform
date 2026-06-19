@@ -10,6 +10,10 @@ resource "aws_launch_template" "app" {
 
   vpc_security_group_ids = [var.app_security_group_id]
 
+  iam_instance_profile {
+    name = var.iam_instance_profile_name
+  }
+
   metadata_options {
     http_endpoint               = "enabled"
     http_tokens                 = "required"
@@ -61,8 +65,11 @@ resource "aws_autoscaling_group" "app" {
   health_check_grace_period = 300
 
   launch_template {
-    id      = aws_launch_template.app.id
-    version = "$Latest"
+    id = aws_launch_template.app.id
+    # Pinned to the version that was actually applied, instead of "$Latest",
+    # so a new Launch Template revision doesn't silently roll out to the ASG
+    # outside of a controlled CI/CD deploy.
+    version = aws_launch_template.app.latest_version
   }
 
   tag {

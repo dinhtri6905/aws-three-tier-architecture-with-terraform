@@ -1,7 +1,6 @@
 # ======================
 # TERRAFORM
 # ======================
-
 # State files
 *.tfstate
 *.tfstate.*

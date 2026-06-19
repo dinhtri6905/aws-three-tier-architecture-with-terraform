@@ -5,7 +5,6 @@ locals {
 # ===== EC2 APPLICATION SERVERS =====
 resource "aws_instance" "app" {
   #checkov:skip=CKV_AWS_126: Detailed monitoring not required in lab environment
-  #checkov:skip=CKV2_AWS_41: EC2 instance does not require IAM role in lab environment
 
   count = length(var.app_subnet_ids)
 
@@ -13,6 +12,8 @@ resource "aws_instance" "app" {
   instance_type          = var.instance_type
   subnet_id              = var.app_subnet_ids[count.index]
   vpc_security_group_ids = [var.app_security_group_id]
+
+  iam_instance_profile = var.iam_instance_profile_name
 
   associate_public_ip_address = false
 

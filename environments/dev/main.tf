@@ -35,6 +35,17 @@ module "s3" {
   project_name = var.project_name
   environment  = var.environment
 }
+
+# ============================================================
+# MODULE: IAM
+# ============================================================
+module "iam" {
+  source = "../../modules/iam"
+
+  project_name = var.project_name
+  environment  = var.environment
+}
+
 # ============================================================
 # MODULE: APPLICATION LOAD BALANCER
 # ============================================================
@@ -49,6 +60,9 @@ module "alb" {
   alb_security_group_id = module.security-group.alb_security_group_id
 
   alb_logs_id = module.s3.alb_logs_id
+
+  certificate_arn = var.certificate_arn
+  ssl_policy = var.ssl_policy
 }
 
 # ============================================================
@@ -65,6 +79,8 @@ module "ec2" {
   app_subnet_ids        = module.vpc.app_subnet_ids
   app_security_group_id = module.security-group.app_security_group_id
   target_group_arn      = module.alb.target_group_arn
+
+  iam_instance_profile_name = module.iam.instance_profile_name
 }
 
 # ============================================================
@@ -79,6 +95,8 @@ module "autoscaling" {
   ami_id                = var.ami_id
   instance_type         = var.instance_type
   app_security_group_id = module.security-group.app_security_group_id
+
+  iam_instance_profile_name = module.iam.instance_profile_name
 
   app_subnet_ids   = module.vpc.app_subnet_ids
   target_group_arn = module.alb.target_group_arn
@@ -106,9 +124,11 @@ module "rds" {
 
   database_name     = var.database_name
   database_username = var.database_username
-  database_password = var.database_password
 
   multi_az = var.multi_az
+
+  deletion_protection = var.deletion_protection
+  skip_final_snapshot = var.skip_final_snapshot
 }
 
 # ============================================================

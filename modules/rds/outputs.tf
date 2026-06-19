@@ -33,3 +33,8 @@ output "database_username" {
   value       = aws_db_instance.main.username
   sensitive   = true
 }
+
+output "master_user_secret_arn" {
+  description = "ARN of the Secrets Manager secret holding the RDS master user password (created automatically by manage_master_user_password)"
+  value       = aws_db_instance.main.master_user_secret[0].secret_arn
+}

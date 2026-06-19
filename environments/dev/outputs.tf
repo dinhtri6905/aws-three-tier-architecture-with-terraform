@@ -96,6 +96,12 @@ output "rds_arn" {
   value       = module.rds.rds_instance_arn
 }
 
+output "rds_master_user_secret_arn" {
+  description = "Secrets Manager ARN holding the RDS master user password"
+  value       = module.rds.master_user_secret_arn
+  sensitive   = true
+}
+
 # ============================================================
 # MONITORING
 # ============================================================

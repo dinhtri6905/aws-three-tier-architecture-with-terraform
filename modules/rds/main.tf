@@ -17,13 +17,11 @@ resource "aws_db_subnet_group" "main" {
 
 # ===== RDS MYSQL INSTANCE =====
 resource "aws_db_instance" "main" {
-  #checkov:skip=CKV_AWS_293: Deletion protection disabled for lab environment
   #checkov:skip=CKV_AWS_129: RDS log exports not required for lab environment
   #checkov:skip=CKV_AWS_161: IAM database authentication not required for lab environment
   #checkov:skip=CKV_AWS_157: Multi-AZ disabled for cost optimization in lab environment
-
   #checkov:skip=CKV_AWS_118: Enhanced monitoring not required for lab environment
-  
+
   identifier = "${local.name_prefix}-mysql"
 
   engine         = "mysql"
@@ -37,12 +35,17 @@ resource "aws_db_instance" "main" {
   storage_type = "gp3"
   # CKV_AWS_16 - RDS Encryption at Rest
   storage_encrypted = true
-  
+
   auto_minor_version_upgrade = true
 
   db_name  = var.database_name
   username = var.database_username
-  password = var.database_password
+
+  # The master password is generated and stored by AWS RDS in Secrets Manager
+  # (no plaintext password variable, nothing to leak via tfvars/CI logs/state).
+  # Retrieve it via `aws_db_instance.main.master_user_secret[0].secret_arn`
+  # or `aws secretsmanager get-secret-value`.
+  manage_master_user_password = true
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [var.rds_security_group_id]
@@ -53,12 +56,12 @@ resource "aws_db_instance" "main" {
 
   backup_retention_period = 7
 
-  skip_final_snapshot = true
+  skip_final_snapshot = var.skip_final_snapshot
 
-  deletion_protection = false
+  deletion_protection = var.deletion_protection
 
   copy_tags_to_snapshot = true
-  
+
   tags = {
     Name        = "${local.name_prefix}-rds"
     Environment = var.environment
