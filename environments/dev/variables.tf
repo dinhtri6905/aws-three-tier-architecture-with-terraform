@@ -152,16 +152,22 @@ variable "database_username" {
   default     = "admin"
 }
 
-variable "database_password" {
-  description = "Database master password"
-  type        = string
-  sensitive   = true
-}
-
 variable "multi_az" {
   description = "Enable Multi-AZ deployment"
   type        = bool
   default     = false
+}
+
+variable "deletion_protection" {
+  description = "Enable RDS deletion protection. Should be true for production."
+  type        = bool
+  default     = false
+}
+
+variable "skip_final_snapshot" {
+  description = "Skip taking a final snapshot when the RDS instance is destroyed. Should be false for production."
+  type        = bool
+  default     = true
 }
 
 

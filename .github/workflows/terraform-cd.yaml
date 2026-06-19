@@ -17,7 +17,6 @@ name: Terraform CD
 #   AWS_ACCESS_KEY_ID
 #   AWS_SECRET_ACCESS_KEY
 #   BUCKET_TF_STATE      (S3 bucket used to store Terraform state)
-#   DB_PASSWORD          (passed as TF_VAR_database_password)
 #   SLACK_WEBHOOK_URL
 
 on:
@@ -107,8 +106,6 @@ jobs:
             exit 1
           fi
           echo "Plan exit code: $EXITCODE (0=no changes, 2=changes)"
-        env:
-          TF_VAR_database_password: ${{ secrets.DB_PASSWORD }}
 
       - name: Export plan to JSON
         run: |
@@ -378,7 +375,6 @@ jobs:
             Deploy    : ${{ needs.deploy.result }}
           SLACK_FOOTER: "AWS Three-Tier Architecture | ${{ github.repository }}"
 
-
 # =============================================================================
 # JOB 5: Terraform Destroy
 # Executes only when workflow_dispatch is triggered with action = destroy.
@@ -418,8 +414,6 @@ jobs:
       - name: Terraform destroy plan
         id: destroy_plan
         run: terraform plan -destroy -out=tfplan_destroy -no-color
-        env:
-          TF_VAR_database_password: ${{ secrets.DB_PASSWORD }}
 
       - name: Destroy plan status
         if: steps.destroy_plan.outcome == 'failure'
@@ -429,7 +423,6 @@ jobs:
         run: terraform destroy -auto-approve -no-color
         env:
           TF_INPUT: false
-          TF_VAR_database_password: ${{ secrets.DB_PASSWORD }}
 
 # =============================================================================
 # JOB 6: Notify Destroy

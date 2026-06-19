@@ -13,7 +13,6 @@ name: Security and Compliance Scan
 #   AWS_ACCESS_KEY_ID
 #   AWS_SECRET_ACCESS_KEY
 #   BUCKET_TF_STATE
-#   DB_PASSWORD
 #   SLACK_WEBHOOK_URL
 
 on:
@@ -83,8 +82,6 @@ jobs:
             -out=tfplan \
             -no-color \
             -input=false
-        env:
-           TF_VAR_database_password: ${{ secrets.DB_PASSWORD }}
 
       - name: Export plan to JSON
         run: |

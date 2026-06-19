@@ -106,9 +106,11 @@ module "rds" {
 
   database_name     = var.database_name
   database_username = var.database_username
-  database_password = var.database_password
 
   multi_az = var.multi_az
+
+  deletion_protection = var.deletion_protection
+  skip_final_snapshot = var.skip_final_snapshot
 }
 
 # ============================================================

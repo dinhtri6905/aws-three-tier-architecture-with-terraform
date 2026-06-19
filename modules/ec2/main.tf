@@ -5,7 +5,6 @@ locals {
 # ===== EC2 APPLICATION SERVERS =====
 resource "aws_instance" "app" {
   #checkov:skip=CKV_AWS_126: Detailed monitoring not required in lab environment
-  #checkov:skip=CKV2_AWS_41: EC2 instance does not require IAM role in lab environment
 
   count = length(var.app_subnet_ids)
 
