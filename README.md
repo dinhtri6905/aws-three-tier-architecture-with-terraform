@@ -1,24 +1,23 @@
-# AWS Three-Tier Architecture
+# AWS Three-Tier Architecture with Terraform
 
-Infrastructure AWS ba tầng được triển khai hoàn toàn bằng **Terraform**, bảo vệ bởi pipeline CI/CD trên **GitHub Actions** tích hợp kiểm tra bảo mật tự động ở mỗi bước trước khi apply.
-
----
-
-## Mục lục
-
-- [Kiến trúc tổng quan](#kiến-trúc-tổng-quan)
-- [Mô hình kiến trúc tổng thể](#mô-hình-kiến-trúc-tổng-thể)
-- [Thành phần hạ tầng](#thành-phần-hạ-tầng)
-- [Cấu trúc thư mục](#cấu-trúc-thư-mục)
-- [CI/CD Pipeline](#cicd-pipeline)
-- [Policy-as-Code với OPA/Rego](#policy-as-code-với-oparego)
-- [Yêu cầu trước khi chạy](#yêu-cầu-trước-khi-chạy)
-- [Bắt đầu nhanh](#bắt-đầu-nhanh)
-- [Tài liệu tham khảo](#tài-liệu-tham-khảo)
+A production-style AWS three-tier infrastructure deployed entirely with **Terraform**, protected by a CI/CD pipeline on **GitHub Actions** with automated security checks integrated at every step before apply.
 
 ---
 
-## Kiến trúc tổng quan
+## Table of Contents
+
+- [Architecture Overview](#architecture-overview)
+- [Architecture Diagram](#architecture-diagram)
+- [Infrastructure Components](#infrastructure-components)
+- [Directory Structure](#directory-structure)
+- [CI/CD Pipeline & OPA/Rego Policies](#cicd-pipeline--oparego-policies)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [References](#references)
+
+---
+
+## Architecture Overview
 
 ```
 Internet
@@ -32,92 +31,92 @@ Internet
 ┌──────────────────────────────────────────────────────────────┐  Private Subnet
 │   EC2 Application Servers  +  Auto Scaling Group             │  ap-southeast-1a/b/c
 └──────────────────────────────────────────────────────────────┘
-    │  App port only (từ App SG)
+    │  App port only (from App SG)
     ▼
 ┌──────────────────────────────────────────────────────────────┐  Private Subnet (DB)
 │   RDS MySQL / PostgreSQL  (encrypted, no public access)      │  ap-southeast-1a/b/c
 └──────────────────────────────────────────────────────────────┘
 ```
 
-Traffic từ internet chỉ vào được qua ALB. App tier nằm ở private subnet, chỉ nhận kết nối từ ALB Security Group. RDS nằm ở DB subnet group riêng biệt, chỉ nhận kết nối từ App tier Security Group — không có route nào ra internet trực tiếp.
+Internet traffic enters only through the ALB. The App tier resides in private subnets and only accepts connections from the ALB Security Group. RDS resides in a dedicated DB subnet group and only accepts connections from the App tier Security Group — no direct internet route exists.
 
 ---
 
-## Mô hình kiến trúc tổng thể 
+## Architecture Diagram
 ![Architecture](images/architecture.png)
 
 ---
 
-## Thành phần hạ tầng
+## Infrastructure Components
 
 ### Web Tier — Public Subnet
 
-| Thành phần | Chi tiết |
-|------------|----------|
-| Application Load Balancer | Internet-facing, bắt buộc multi-AZ (≥ 2 subnet) |
-| EC2 Web Servers | Public subnet, port 80/443 mở từ internet |
-| Internet Gateway | Cho phép traffic inbound/outbound public subnet |
+| Component | Details |
+|-----------|---------|
+| Application Load Balancer | Internet-facing, multi-AZ required (≥ 2 subnets) |
+| EC2 Web Servers | Public subnet, ports 80/443 open from internet |
+| Internet Gateway | Allows inbound/outbound traffic for public subnets |
 
 ### App Tier — Private Subnet
 
-| Thành phần | Chi tiết |
-|------------|----------|
-| EC2 Application Servers | Private subnet, không có public IP |
-| Auto Scaling Group | Trải trên ≥ 2 Availability Zone |
-| NAT Gateway | Outbound-only internet (cập nhật package, gọi AWS API) |
+| Component | Details |
+|-----------|---------|
+| EC2 Application Servers | Private subnet, no public IP |
+| Auto Scaling Group | Spread across ≥ 2 Availability Zones |
+| NAT Gateway | Outbound-only internet access (package updates, AWS API calls) |
 
 ### Data Tier — Private Subnet (DB)
 
-| Thành phần | Chi tiết |
-|------------|----------|
+| Component | Details |
+|-----------|---------|
 | RDS MySQL 8.0 / PostgreSQL | `publicly_accessible = false`, `storage_encrypted = true` |
-| DB Subnet Group | Bắt buộc có `db_subnet_group_name`, không deploy trên public subnet |
-| Backup | `backup_retention_period >= 7` ngày |
+| DB Subnet Group | `db_subnet_group_name` required, no deployment on public subnets |
+| Backup | `backup_retention_period >= 7` days |
 
-### Thành phần dùng chung
+### Shared Components
 
-| Thành phần | Mục đích |
-|------------|----------|
+| Component | Purpose |
+|-----------|---------|
 | VPC | `enable_dns_hostnames = true`, `enable_dns_support = true` |
-| Route Tables | Bảng định tuyến riêng cho từng tier |
-| Security Groups | Least-privilege theo từng tier, có description rõ ràng |
-| IAM | Instance profiles, role-based — không gán policy trực tiếp vào user |
-| CloudWatch | Log groups, metric alarms cho hạ tầng |
-<!-- | CloudTrail | Multi-region, log file validation, tích hợp CloudWatch Logs | -->
+| Route Tables | Separate routing table per tier |
+| Security Groups | Least-privilege per tier, with clear descriptions |
+| IAM | Instance profiles, role-based — no inline policies directly on users |
+| CloudWatch | Log groups, metric alarms for infrastructure |
+<!-- | CloudTrail | Multi-region, log file validation, integrated with CloudWatch Logs | -->
 
 ---
 
-## Cấu trúc thư mục
+## Directory Structure
 
 ```
 AWS-Three-Tier-Architecture/
 │
 ├── .github/
 │   └── workflows/
-│       ├── terraform-ci.yml       # Static checks — không cần AWS credentials
+│       ├── terraform-ci.yml       # Static checks — no AWS credentials required
 │       ├── terraform-cd.yml       # Plan → OPA gate → Apply / Destroy
-│       ├── check-scan.yml         # Quét bảo mật định kỳ hàng ngày
-│       └── CICD-GUIDE.md          # Hướng dẫn setup và vận hành chi tiết
+│       ├── check-scan.yml         # Daily scheduled security scan
+│       └── CICD-GUIDE.md          # Detailed setup and operations guide
 │
 ├── environments/
 │   ├── dev/
 │   │   ├── backend.tf             # S3 remote state: dev/terraform.tfstate
-│   │   ├── main.tf                # Gọi các module
+│   │   ├── main.tf                # Module calls
 │   │   ├── variables.tf
 │   │   ├── outputs.tf
 │   │   ├── providers.tf
 │   │   ├── versions.tf
-│   │   └── terraform.tfvars       # Giá trị biến cho môi trường dev
+│   │   └── terraform.tfvars       # Variable values for dev environment
 │   └── prod/
-│       └── ...                    # Cấu trúc tương tự dev
+│       └── ...                    # Same structure as dev
 │
 ├── modules/
-│   ├── vpc/                       # VPC, subnet, IGW, NAT, route table
-│   ├── security-group/            # Security group per-tier
+│   ├── vpc/                       # VPC, subnets, IGW, NAT, route tables
+│   ├── security-group/            # Per-tier security groups
 │   ├── alb/                       # Application Load Balancer
-│   ├── ec2/                       # Web và App tier EC2
-│   ├── s3/                        # Lưu trữ logs
-│   ├── autoscaling/               # Auto Scaling Group cho App tier
+│   ├── ec2/                       # Web and App tier EC2 instances
+│   ├── s3/                        # Log storage
+│   ├── autoscaling/               # Auto Scaling Group for App tier
 │   ├── rds/                       # RDS MySQL/PostgreSQL
 │   └── monitoring/                # CloudWatch, alarms, log groups
 │
@@ -136,93 +135,93 @@ AWS-Three-Tier-Architecture/
 
 ```bash
 Workflow Files
-- terraform-ci.yml - CI checks for dev (validate, tflint, tfsec, checkov) - triggered on push/PR to develop and feature/**
-- terraform-cd.yml - CD deployment for dev (plan, opa-gate, deploy, destroy)
-- check-scan.yml - Periodic security scan (OPA full check, tfsec deep, reports)
-- policies/security.rego - Security policies
-- policies/networking.rego - Networking policies
-- policies/compliance.rego - CIS Benchmark compliance
+- terraform-ci.yml  - CI checks for dev (validate, tflint, tfsec, checkov) - triggered on push/PR to develop and feature/**
+- terraform-cd.yml  - CD deployment for dev (plan, opa-gate, deploy, destroy)
+- check-scan.yml    - Periodic security scan (OPA full check, tfsec deep, reports)
+- policies/security.rego    - Security policies
+- policies/networking.rego  - Networking policies
+- policies/compliance.rego  - CIS Benchmark compliance
 ```
 
-Ba workflow tách biệt theo mục đích, chạy độc lập.
+Three separate workflows, each running independently.
 
 ```
-Push lên feature/** hoặc develop
+Push to feature/** or develop
             │
             ▼
    ┌─────────────────┐
    │  terraform-ci   │  fmt · validate · TFLint · tfsec · Checkov
-   └────────┬────────┘  (không cần AWS credentials, dùng -backend=false)
+   └────────┬────────┘  (no AWS credentials required, uses -backend=false)
             │ pass
             ▼
    ┌─────────────────┐
    │  terraform-cd   │  plan → OPA gate → apply
-   └────────┬────────┘  (chỉ chạy khi push lên develop hoặc workflow_dispatch)
+   └────────┬────────┘  (runs only on push to develop or workflow_dispatch)
             │
             ▼
    ┌─────────────────┐
    │   check-scan    │  OPA full scan + tfsec deep
-   └─────────────────┘  (chạy tự động 02:00 GMT+7 hàng ngày)
+   └─────────────────┘  (runs automatically at 02:00 GMT+7 daily)
 ```
 
-### terraform-ci.yml — Kiểm tra tĩnh (Static Analysis)
+### terraform-ci.yml — Static Analysis
 
-Trigger: push lên `develop` / `feature/**`, hoặc Pull Request vào `develop`.
-Không cần AWS credentials — tất cả bước dùng `terraform init -backend=false`.
+Trigger: push to `develop` / `feature/**`, or Pull Request into `develop`.
+No AWS credentials required — all steps use `terraform init -backend=false`.
 
-> Trên nhánh `feature/**`: `SOFT_FAIL=true` — lỗi scan được báo cáo nhưng không block workflow.
+> On `feature/**` branches: `SOFT_FAIL=true` — scan errors are reported but do not block the workflow.
 
-| Job | Nội dung | Kết quả |
-|-----|----------|---------|
-| `validate` | `terraform fmt -check`, `init -backend=false`, `validate` | Fail nếu sai format hoặc cú pháp |
-| `tflint` | AWS ruleset, naming convention, required providers, documented variables | Report JSON → artifact + comment PR |
-| `tfsec` | Quét lỗi bảo mật IaC, so sánh với AWS best practice | Fail nếu tìm thấy lỗi nghiêm trọng |
-| `checkov` | CIS / NIST / PCI DSS compliance scan | SARIF upload lên GitHub Security tab + comment PR |
-| `ci-summary` | Tổng hợp kết quả 4 job trên | 1 comment tổng hợp trên PR + Slack notify |
+| Job | Content | Result |
+|-----|---------|--------|
+| `validate` | `terraform fmt -check`, `init -backend=false`, `validate` | Fails on format or syntax errors |
+| `tflint` | AWS ruleset, naming conventions, required providers, documented variables | JSON report → artifact + PR comment |
+| `tfsec` | IaC security scan, compared against AWS best practices | Fails if critical issues found |
+| `checkov` | CIS / NIST / PCI DSS compliance scan | SARIF upload to GitHub Security tab + PR comment |
+| `ci-summary` | Aggregates results from the 4 jobs above | Single summary comment on PR + Slack notification |
 
 ### terraform-cd.yml — Plan, OPA Gate, Apply
 
-Trigger: push lên `develop` (auto-apply) hoặc `workflow_dispatch` với lựa chọn `action`.
+Trigger: push to `develop` (auto-apply) or `workflow_dispatch` with `action` selection.
 
-| Job | Nội dung |
-|-----|----------|
-| `plan` | `terraform init` với S3 backend thực, `terraform plan`, export ra 2 artifact: binary plan (cho apply) và JSON plan (cho OPA) |
-| `opa-gate` | Tải JSON plan từ artifact, chạy lần lượt `security.rego` → `networking.rego` → `compliance.rego`. Bất kỳ rule `deny` nào trả về vi phạm sẽ block toàn bộ pipeline |
-| `deploy` | `terraform apply` dùng binary plan đã duyệt — chỉ chạy sau khi `opa-gate` pass |
-| `destroy` | `terraform destroy` — chỉ chạy khi `workflow_dispatch` với `action=destroy`, không bao giờ tự động |
-| `notify` | Gửi Slack với trạng thái plan / opa-gate / deploy |
+| Job | Content |
+|-----|---------|
+| `plan` | `terraform init` with real S3 backend, `terraform plan`, exports 2 artifacts: binary plan (for apply) and JSON plan (for OPA) |
+| `opa-gate` | Downloads JSON plan from artifact, runs `security.rego` → `networking.rego` → `compliance.rego` in sequence. Any `deny` rule violation blocks the entire pipeline |
+| `deploy` | `terraform apply` using the approved binary plan — only runs after `opa-gate` passes |
+| `destroy` | `terraform destroy` — only runs when `workflow_dispatch` with `action=destroy`, never automatically |
+| `notify` | Sends Slack notification with plan / opa-gate / deploy status |
 
 **workflow_dispatch options:**
 
-| action | Hành động |
-|--------|-----------|
-| `plan` | Chỉ chạy plan, xem trước thay đổi, không apply |
+| action | Result |
+|--------|--------|
+| `plan` | Runs plan only, previews changes, does not apply |
 | `apply` | plan → OPA gate → terraform apply |
-| `destroy` | terraform destroy (yêu cầu xác nhận qua GitHub Environment) |
+| `destroy` | terraform destroy (requires confirmation via GitHub Environment) |
 
-### check-scan.yml — Quét Bảo Mật Định Kỳ
+### check-scan.yml — Periodic Security Scan
 
-Trigger: cron `0 19 * * *` (02:00 GMT+7 hàng ngày) hoặc `workflow_dispatch`.
+Trigger: cron `0 19 * * *` (02:00 GMT+7 daily) or `workflow_dispatch`.
 
-| Job | Nội dung |
-|-----|----------|
-| `opa-full-scan` | Generate plan JSON mới nhất từ AWS, chạy cả 3 policy file, tách rõ `deny` và `warn` ra file `opa-results.json` |
-| `tfsec-deep` | Quét toàn bộ rules không bỏ qua, output JSON |
-| `generate-reports` | Tổng hợp bảng kết quả vào Step Summary, upload artifact, Slack |
+| Job | Content |
+|-----|---------|
+| `opa-full-scan` | Generates a fresh plan JSON from AWS, runs all 3 policy files, separates `deny` and `warn` into `opa-results.json` |
+| `tfsec-deep` | Scans all rules without skipping, outputs JSON |
+| `generate-reports` | Aggregates results into Step Summary, uploads artifact, sends Slack notification |
 
 **workflow_dispatch options:**
 
-| scan_type | Hành động |
-|-----------|-----------|
-| `all` | Chạy cả OPA full scan và tfsec deep |
-| `opa-only` | Chỉ chạy OPA với plan JSON mới nhất |
-| `tfsec-only` | Chỉ chạy tfsec deep scan |
+| scan_type | Result |
+|-----------|--------|
+| `all` | Runs both OPA full scan and tfsec deep |
+| `opa-only` | Runs OPA only with the latest plan JSON |
+| `tfsec-only` | Runs tfsec deep scan only |
 
 ---
 
-## Policy-as-Code với OPA/Rego
+## Policy-as-Code with OPA/Rego
 
-Mỗi lần chạy `terraform-cd.yml` và `check-scan.yml`, Terraform plan được export ra JSON và đưa qua 3 file policy trước khi bất kỳ resource nào được tạo.
+Every run of `terraform-cd.yml` and `check-scan.yml` exports the Terraform plan to JSON and passes it through 3 policy files before any resource is created.
 
 ```
 tfplan.json
@@ -232,118 +231,113 @@ tfplan.json
     └── policies/compliance.rego  → data.terraform.compliance.deny / .warn
 ```
 
-**Quy tắc phân loại:**
-- `deny` — vi phạm nghiêm trọng, trả về message, pipeline dừng lại, không deploy
-- `warn` — cảnh báo, in ra job log nhưng pipeline tiếp tục
+**Classification:**
+- `deny` — critical violation, returns a message, pipeline stops, no deploy
+- `warn` — warning, printed to job log but pipeline continues
 
 ### security.rego
 
-Kiểm tra: EC2, Launch Template, RDS, Security Group, IAM.
+Checks: EC2, Launch Template, RDS, Security Group, IAM.
 
-| Rule | Loại |
+| Rule | Type |
 |------|------|
-| EC2 và Launch Template phải enforce IMDSv2 (`http_tokens = "required"`) | deny |
-| RDS phải bật `storage_encrypted = true` | deny |
-| RDS phải có `publicly_accessible = false` | deny |
-| RDS phải có `backup_retention_period >= 7` | deny |
-| Security Group không được mở SSH (22), RDP (3389) ra `0.0.0.0/0` | deny |
-| Security Group không được mở MySQL (3306), PostgreSQL (5432) ra `0.0.0.0/0` | deny |
-| Security Group không được có rule `protocol = -1` (all traffic) từ `0.0.0.0/0` | deny |
-| IAM Policy không được có `Action=*` và `Resource=*` đồng thời (cả array và string format) | deny |
-| Không được gán inline policy trực tiếp vào IAM user (`aws_iam_user_policy`) | deny |
-| ALB nên bật `access_logs` | warn |
-| RDS nên bật `deletion_protection` | warn |
-| EC2 không có `key_name` nên đảm bảo có SSM Session Manager | warn |
+| EC2 and Launch Template must enforce IMDSv2 (`http_tokens = "required"`) | deny |
+| RDS must have `storage_encrypted = true` | deny |
+| RDS must have `publicly_accessible = false` | deny |
+| RDS must have `backup_retention_period >= 7` | deny |
+| Security Group must not open SSH (22) or RDP (3389) to `0.0.0.0/0` | deny |
+| Security Group must not open MySQL (3306) or PostgreSQL (5432) to `0.0.0.0/0` | deny |
+| Security Group must not have `protocol = -1` (all traffic) from `0.0.0.0/0` | deny |
+| IAM Policy must not have `Action=*` and `Resource=*` simultaneously (array and string formats) | deny |
+| Must not attach inline policies directly to IAM users (`aws_iam_user_policy`) | deny |
+| ALB should have `access_logs` enabled | warn |
+| RDS should have `deletion_protection` enabled | warn |
+| EC2 without `key_name` should ensure SSM Session Manager is available | warn |
 
 ### networking.rego
 
-Kiểm tra: VPC, Subnet, EC2 App tier, RDS, ALB, Security Group.
+Checks: VPC, Subnet, App tier EC2, RDS, ALB, Security Group.
 
-| Rule | Loại |
+| Rule | Type |
 |------|------|
-| VPC phải có `enable_dns_hostnames = true` và `enable_dns_support = true` | deny |
-| Subnet có tag `Tier=app` hoặc `Tier=database` không được `map_public_ip_on_launch = true` | deny |
-| EC2 có tag `Tier=app` không được có `associate_public_ip_address = true` | deny |
-| RDS phải có `db_subnet_group_name` (bắt buộc nằm trong DB subnet group) | deny |
-| ALB có tag `Tier=web` phải có `internal = false` (internet-facing) | deny |
-| ALB phải được deploy trên ít nhất 2 subnet (multi-AZ) | deny |
-| Security Group không được để `description = "managed by terraform"` | deny |
-| Security Group của DB tier không được có egress `protocol=-1` ra `0.0.0.0/0` | deny |
-| VPC nên tạo `aws_flow_log` để ghi lại network traffic | warn |
-| ALB Listener của Web tier nên dùng port 443 (HTTPS) | warn |
-| Không tìm thấy `aws_nat_gateway` trong plan | warn |
+| VPC must have `enable_dns_hostnames = true` and `enable_dns_support = true` | deny |
+| Subnets tagged `Tier=app` or `Tier=database` must not have `map_public_ip_on_launch = true` | deny |
+| EC2 tagged `Tier=app` must not have `associate_public_ip_address = true` | deny |
+| RDS must have `db_subnet_group_name` set (must reside in a DB subnet group) | deny |
+| ALB tagged `Tier=web` must have `internal = false` (internet-facing) | deny |
+| ALB must be deployed across at least 2 subnets (multi-AZ) | deny |
+| Security Group must not have `description = "managed by terraform"` | deny |
+| DB tier Security Group must not have egress `protocol=-1` to `0.0.0.0/0` | deny |
+| VPC should have `aws_flow_log` to capture network traffic | warn |
+| Web tier ALB Listener should use port 443 (HTTPS) | warn |
+| No `aws_nat_gateway` found in plan | warn |
 
 ### compliance.rego
 
-Kiểm tra: S3, CloudTrail, IAM — theo CIS AWS Foundations Benchmark v1.5.0. Kèm theo Tagging policy tổ chức.
+Checks: S3, CloudTrail, IAM — aligned with CIS AWS Foundations Benchmark v1.5.0. Includes an organizational Tagging policy.
 
-| Rule | CIS | Loại |
+| Rule | CIS | Type |
 |------|-----|------|
-| S3 phải có `server_side_encryption_configuration` | 2.1.1 | deny |
-| S3 versioning phải `status = "Enabled"` | 2.1.2 | deny |
-| S3 phải bật đủ 4 public access block settings | 2.1.3 | deny |
-| Phải có ít nhất 1 `aws_cloudtrail` resource | 3.1 | deny |
-| CloudTrail phải có `enable_log_file_validation = true` | 3.2 | deny |
-| CloudTrail phải có `cloud_watch_logs_group_arn` | 3.4 | deny |
-| CloudTrail phải có `is_multi_region_trail = true` | 3.5 | deny |
-| Không được dùng `aws_iam_user_policy` hoặc `aws_iam_policy_attachment` với user | 5.1 | deny |
-| IAM Policy không được có `Action=*` và `Resource=*` | 5.2 | deny |
-| RDS phải có `storage_encrypted = true` | 5.4 | deny |
-| Resource (EC2, RDS, ALB, VPC, Subnet, SG, S3) phải có tags: `Environment`, `Project`, `ManagedBy` | Org Policy | deny |
-| S3 nên bật access logging | 2.1.4 | warn |
-| Nên có `aws_cloudwatch_metric_alarm` cho unauthorized API calls | 4.1 | warn |
-| RDS nên bật `multi_az` | — | warn |
-| Auto Scaling Group nên trải trên ≥ 2 Availability Zone | — | warn |
+| S3 must have `server_side_encryption_configuration` | 2.1.1 | deny |
+| S3 versioning must be `status = "Enabled"` | 2.1.2 | deny |
+| S3 must have all 4 public access block settings enabled | 2.1.3 | deny |
+| At least 1 `aws_cloudtrail` resource must exist | 3.1 | deny |
+| CloudTrail must have `enable_log_file_validation = true` | 3.2 | deny |
+| CloudTrail must have `cloud_watch_logs_group_arn` set | 3.4 | deny |
+| CloudTrail must have `is_multi_region_trail = true` | 3.5 | deny |
+| Must not use `aws_iam_user_policy` or `aws_iam_policy_attachment` on users | 5.1 | deny |
+| IAM Policy must not have `Action=*` and `Resource=*` | 5.2 | deny |
+| RDS must have `storage_encrypted = true` | 5.4 | deny |
+| Resources (EC2, RDS, ALB, VPC, Subnet, SG, S3) must have tags: `Environment`, `Project`, `ManagedBy` | Org Policy | deny |
+| S3 should have access logging enabled | 2.1.4 | warn |
+| A `aws_cloudwatch_metric_alarm` for unauthorized API calls should exist | 4.1 | warn |
+| RDS should have `multi_az` enabled | — | warn |
+| Auto Scaling Group should span ≥ 2 Availability Zones | — | warn |
 
 ---
 
-## Yêu cầu trước khi chạy
+## Prerequisites
 
-| Yêu cầu | Dùng bởi |
-|---------|----------|
+| Requirement | Used by |
+|-------------|---------|
 | AWS Account + IAM User (programmatic access) | terraform-cd, check-scan |
-| S3 bucket cho Terraform remote state (versioning + encryption bật) | terraform-cd, check-scan |
-| DynamoDB table `terraform-state-lock` cho state locking | terraform-cd, check-scan |
-| GitHub Secrets (5 biến, xem bảng bên dưới) | Cả 3 workflow |
+| S3 bucket for Terraform remote state (versioning + encryption enabled) | terraform-cd, check-scan |
+| DynamoDB table `terraform-state-lock` for state locking | terraform-cd, check-scan |
+| GitHub Secrets (5 variables, see table below) | All 3 workflows |
 | GitHub Environments: `development`, `production` | terraform-cd |
-| `environments/dev/terraform.tfvars` với đủ giá trị biến | terraform-cd, check-scan |
+| `environments/dev/terraform.tfvars` with all required variable values | terraform-cd, check-scan |
 
-### GitHub Secrets bắt buộc
+### Required GitHub Secrets
 
-| Secret | Mô tả |
-|--------|-------|
-| `AWS_ACCESS_KEY_ID` | Access key của IAM User |
-| `AWS_SECRET_ACCESS_KEY` | Secret key của IAM User |
-| `BUCKET_TF_STATE` | Tên S3 bucket lưu Terraform state |
-| `DB_PASSWORD` | Mật khẩu RDS master (tối thiểu 8 ký tự) |
-| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL (tùy chọn) |
+| Secret | Description |
+|--------|-------------|
+| `AWS_ACCESS_KEY_ID` | IAM User access key |
+| `AWS_SECRET_ACCESS_KEY` | IAM User secret key |
+| `BUCKET_TF_STATE` | S3 bucket name for Terraform state |
+| `DB_PASSWORD` | RDS master password (minimum 8 characters) |
+| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL (optional) |
 
-Xem `CICD-GUIDE.md` để biết cách tạo từng mục trên theo thứ tự từ bước 1.
+See `CICD-GUIDE.md` for step-by-step instructions on creating each item above.
 
 ---
 
-## Bắt đầu nhanh
+## Quick Start
 
-### 1. Tạo S3 backend và DynamoDB lock table
+### 1. Create S3 backend and DynamoDB lock table
 
 ```bash
-###########################################################
-### CÓ 2 CÁCH TẠO ĐƯỢC HƯỚNG DẪN ###
-########################################################### 
-
-##### TẠO BẰNG CLI #####  
-@@ Cái này nên vào .github/workflows/CICD-GUIDE.md sẽ rõ hơn 
-# Tạo S3 bucket 
+# Option A: Using AWS CLI
+# Create S3 bucket
 aws s3api create-bucket \
-  --bucket <tên-bucket> \
+  --bucket <bucket-name> \
   --region ap-southeast-1 \
   --create-bucket-configuration LocationConstraint=ap-southeast-1
 
 aws s3api put-bucket-versioning \
-  --bucket <tên-bucket> \
+  --bucket <bucket-name> \
   --versioning-configuration Status=Enabled
 
-# Tạo DynamoDB lock table
+# Create DynamoDB lock table
 aws dynamodb create-table \
   --table-name terraform-state-lock \
   --attribute-definitions AttributeName=LockID,AttributeType=S \
@@ -351,19 +345,18 @@ aws dynamodb create-table \
   --billing-mode PAY_PER_REQUEST \
   --region ap-southeast-1
 
-##### VÀO FOLDER BACKEND TẠO TẰNG TERRAFORM #####
+# Option B: Using the backend/ Terraform module
+cd backend/
 terraform init
-
 terraform plan
-
 terraform apply
 ```
 
-### 2. Cấu hình backend và tfvars
+### 2. Configure backend and tfvars
 
-Cập nhật `environments/dev/backend.tf` với tên bucket, sau đó điền `environments/dev/terraform.tfvars` với các giá trị thực tế (VPC CIDR, instance type, AMI ID, ...).
+Update `environments/dev/backend.tf` with the bucket name, then populate `environments/dev/terraform.tfvars` with the actual values (VPC CIDR, instance type, AMI ID, etc.).
 
-### 3. Kiểm tra local trước khi push
+### 3. Validate locally before pushing
 
 ```bash
 cd environments/dev
@@ -372,20 +365,20 @@ terraform validate
 terraform fmt -recursive
 ```
 
-### 4. Kích hoạt CI bằng cách push lên feature branch
+### 4. Trigger CI by pushing to a feature branch
 
 ```bash
 git checkout -b feature/initial-infra
 git add .
 git commit -m "feat: initial three-tier infrastructure"
 git push origin feature/initial-infra
-# Tạo Pull Request vào develop -> terraform-ci.yml tự động chạy
+# Create a Pull Request into develop — terraform-ci.yml runs automatically
 ```
 
-### 5. Deploy lên dev
+### 5. Deploy to dev
 
 ```bash
-# Merge vào develop -> terraform-cd.yml tự động: plan -> OPA gate -> apply
+# Merge into develop — terraform-cd.yml automatically runs: plan → OPA gate → apply
 git checkout develop
 git merge feature/initial-infra
 git push origin develop
@@ -393,13 +386,13 @@ git push origin develop
 
 ---
 
-## Tài liệu tham khảo
+## References
 
-| Tài liệu | Nội dung |
-|----------|----------|
-| `CICD-GUIDE.md` | Hướng dẫn đầy đủ: tạo IAM, S3, DynamoDB, GitHub Secrets, Environments, xử lý lỗi thường gặp |
-| [CIS AWS Foundations Benchmark v1.5.0](https://www.cisecurity.org/benchmark/amazon_web_services) | Tiêu chuẩn compliance được áp dụng trong `compliance.rego` |
-| [OPA Documentation](https://www.openpolicyagent.org/docs/latest) | Tham khảo cú pháp Rego |
-| [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) | Tài liệu resource được dùng trong modules |
-| [tfsec Rules](https://aquasecurity.github.io/tfsec) | Danh sách rule tfsec áp dụng trong CI |
-| [Checkov Checks](https://www.checkov.io/5.Policy%20Index/terraform.html) | Danh sách check Checkov áp dụng trong CI |
+| Document | Content |
+|----------|---------|
+| `CICD-GUIDE.md` | Full guide: creating IAM, S3, DynamoDB, GitHub Secrets, Environments, troubleshooting common errors |
+| [CIS AWS Foundations Benchmark v1.5.0](https://www.cisecurity.org/benchmark/amazon_web_services) | Compliance standard applied in `compliance.rego` |
+| [OPA Documentation](https://www.openpolicyagent.org/docs/latest) | Rego syntax reference |
+| [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) | Resource documentation used in modules |
+| [tfsec Rules](https://aquasecurity.github.io/tfsec) | List of tfsec rules applied in CI |
+| [Checkov Checks](https://www.checkov.io/5.Policy%20Index/terraform.html) | List of Checkov checks applied in CI |

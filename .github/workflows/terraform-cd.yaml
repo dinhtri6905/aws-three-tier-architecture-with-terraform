@@ -1,22 +1,23 @@
 name: Terraform CD
 
-# Deploy infrastructure cho moi truong dev.
+# Deploy infrastructure for the development environment.
 #
-# Trigger:
-#   push len develop (auto plan + apply sau khi qua OPA gate)
-#   workflow_dispatch: chon action = plan | apply | destroy
+# Triggers:
+#   - Push to the develop branch (automatically runs plan and apply after passing the OPA gate)
+#   - Manual execution via workflow_dispatch with action = plan | apply | destroy
 #
-# Luong chay (push hoac apply):
+# Execution Flow:
 #   plan | apply  -->  plan --> opa-gate --> deploy --> notify-apply
 #   destroy       -->  destroy --> notify-destroy
 #
-# Luong chay (destroy - workflow_dispatch only):
-#   destroy (can thu cong chay, khong auto)
+# Destroy Flow (workflow_dispatch only):
+#   - Infrastructure destruction must be triggered manually and is never executed automatically.
 #
-# GitHub Secrets can thiet:
-#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-#   BUCKET_TF_STATE (S3 bucket luu Terraform state)
-#   DB_PASSWORD     (truyen qua TF_VAR_database_password)
+# Required GitHub Secrets:
+#   AWS_ACCESS_KEY_ID
+#   AWS_SECRET_ACCESS_KEY
+#   BUCKET_TF_STATE      (S3 bucket used to store Terraform state)
+#   DB_PASSWORD          (passed as TF_VAR_database_password)
 #   SLACK_WEBHOOK_URL
 
 on:
@@ -47,8 +48,10 @@ env:
 
 # =============================================================================
 # JOB 1: Terraform Plan
-# Init voi S3 backend thuc, plan va export JSON cho OPA.
-# Binary plan duoc upload lam artifact de apply job tai xuong.
+# Initialize Terraform using the production S3 backend,
+# generate an execution plan, and export the plan as JSON for OPA evaluation.
+# The binary plan file is uploaded as an artifact so that the apply job
+# can download and reuse the exact approved plan.
 # =============================================================================
 jobs:
   plan:
@@ -139,9 +142,11 @@ jobs:
 
 # =============================================================================
 # JOB 2: OPA Policy Gate
-# Tai JSON plan tu artifact, chay 3 policy file.
-# Den khi tat ca deny = 0 thi moi cho phep deploy.
-# Warn duoc in ra log nhung khong block pipeline.
+# Download the Terraform plan JSON artifact and evaluate it against
+# all three OPA policy files.
+# Deployment is allowed only when all deny violations equal zero.
+# Warning violations are printed to the workflow logs but do not
+# block or fail the pipeline.
 # =============================================================================
   opa-gate:
     name: OPA Policy Gate
@@ -264,10 +269,12 @@ jobs:
 
 # =============================================================================
 # JOB 3: Terraform Apply
-# Chi chay khi:
-#   - push len develop (tu dong)
-#   - workflow_dispatch voi action = apply
-# Tai binary plan da duoc upload o job plan.
+# Executes only when:
+#   - Code is pushed to the develop branch (automatic deployment)
+#   - workflow_dispatch is triggered with action = apply
+#
+# Downloads and applies the approved binary Terraform plan
+# generated and uploaded by the Terraform Plan job.
 # =============================================================================
   deploy:
     name: Deploy to DEV
@@ -335,7 +342,8 @@ jobs:
 
 # =============================================================================
 # JOB 4: Notify Apply
-# Bao cao trang thai cua luong plan → opa-gate → deploy.
+# Report the overall status of the deployment workflow,
+# including the results of the plan → opa-gate → deploy stages.
 # =============================================================================
   notify-apply:
     name: Notify Apply
@@ -373,8 +381,9 @@ jobs:
 
 # =============================================================================
 # JOB 5: Terraform Destroy
-# Chi chay khi workflow_dispatch voi action = destroy.
-# Phai chay thu cong, khong bao gio auto-trigger.
+# Executes only when workflow_dispatch is triggered with action = destroy.
+# Infrastructure destruction must be initiated manually and is never
+# triggered automatically by any event.
 # =============================================================================
   destroy:
     name: Destroy DEV Infrastructure
@@ -424,7 +433,9 @@ jobs:
 
 # =============================================================================
 # JOB 6: Notify Destroy
-# Bao cao trang thai cua luong destroy.
+# Report the overall status and outcome of the destroy workflow,
+# including whether the infrastructure destruction completed successfully
+# or encountered any errors.
 # =============================================================================
   notify-destroy:
     name: Notify Destroy
@@ -449,33 +460,3 @@ jobs:
             Actor     : ${{ github.actor }}
             Destroy   : ${{ needs.destroy.result }}
           SLACK_FOOTER: "AWS Three-Tier Architecture | ${{ github.repository }}"
-
-
-# =============================================================================
-# JOB 5: Slack Notification - bao cao trang thai cuoi cung cua pipeline (OLDDDDDDDĐ)
-# =============================================================================
-  # notify:
-  #   name: Notify Slack
-  #   runs-on: ubuntu-latest
-  #   needs: [plan, opa-gate, deploy]
-  #   if: always()
-  #   steps:
-  #     - name: Notify Slack
-  #       uses: rtCamp/action-slack-notify@v2
-  #       env:
-  #         SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-  #         SLACK_COLOR: >-
-  #           ${{
-  #             needs.deploy.result == 'success' && 'good' ||
-  #             needs.deploy.result == 'skipped' && 'warning' ||
-  #             'danger'
-  #           }}
-  #         SLACK_TITLE: "Terraform CD - DEV"
-  #         SLACK_MESSAGE: |
-  #           Branch      : ${{ github.ref_name }}
-  #           Commit      : ${{ github.sha }}
-  #           Actor       : ${{ github.actor }}
-  #           Plan        : ${{ needs.plan.result }}
-  #           OPA Gate    : ${{ needs.opa-gate.result }}
-  #           Deploy      : ${{ needs.deploy.result }}
-  #         SLACK_FOOTER: "AWS Three-Tier Architecture | ${{ github.repository }}"

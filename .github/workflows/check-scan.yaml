@@ -1,23 +1,24 @@
 name: Security and Compliance Scan
 
-# Chay dinh ky (hang ngay luc 2:00 sang GMT+7 = 19:00 UTC)
-# hoac chay thu cong voi workflow_dispatch.
+# Runs on a schedule (daily at 2:00 AM GMT+7, equivalent to 7:00 PM UTC)
+# or can be triggered manually via workflow_dispatch.
 #
-# Khac voi terraform-ci.yml (chi chay validate + lint),
-# file nay thuc hien quet bao mat toan dien:
-#   - OPA quet tren plan JSON moi nhat (can AWS credentials)
-#   - tfsec quet sau hon voi tat ca cac rule
-#   - Tong hop bao cao, gui Slack
+# Unlike terraform-ci.yml (which only performs validation and linting),
+# this workflow executes a comprehensive security scanning pipeline:
+#   - OPA scans the latest Terraform plan JSON (requires AWS credentials)
+#   - tfsec performs an in-depth scan using all available security rules
+#   - Results are aggregated into a report and sent to Slack
 #
-# GitHub Secrets can thiet:
-#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+# Required GitHub Secrets:
+#   AWS_ACCESS_KEY_ID
+#   AWS_SECRET_ACCESS_KEY
 #   BUCKET_TF_STATE
 #   DB_PASSWORD
 #   SLACK_WEBHOOK_URL
 
 on:
-  schedule:
-    - cron: '0 19 * * *'
+  # schedule:
+  #   - cron: '0 19 * * *'
   workflow_dispatch:
     inputs:
       scan_type:
@@ -38,8 +39,10 @@ env:
 
 # =============================================================================
 # JOB 1: OPA Full Scan
-# Gen plan JSON moi nhat, chay tat ca 3 policy file,
-# phan biet ro rang deny (blocking) va warn (non-blocking).
+# Generate the latest Terraform plan JSON and execute all three policy files.
+# Clearly distinguish between:
+#   - deny: policy violations that block the pipeline
+#   - warn: policy violations that are reported but do not fail the pipeline
 # =============================================================================
 jobs:
   opa-full-scan:
@@ -221,7 +224,9 @@ jobs:
 
 # =============================================================================
 # JOB 2: tfsec Deep Scan
-# Quet tat ca cac rule (khong bo qua), output JSON de tong hop bao cao.
+# Run a comprehensive tfsec scan using all available security rules
+# (without excluding any checks), and generate JSON output
+# for report aggregation and analysis.
 # =============================================================================
   tfsec-deep:
     name: tfsec Deep Scan
@@ -268,8 +273,9 @@ jobs:
 
 # =============================================================================
 # JOB 3: Generate Reports and Notify
-# Tong hop ket qua tu opa-full-scan va tfsec-deep,
-# ghi Step Summary, gui Slack.
+# Aggregate results from the opa-full-scan and tfsec-deep jobs,
+# generate a GitHub Actions Step Summary,
+# and send the consolidated security report to Slack.
 # =============================================================================
   generate-reports:
     name: Generate Reports

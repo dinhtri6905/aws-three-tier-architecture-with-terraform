@@ -1,112 +1,99 @@
 # Module: RDS
 
-Module tạo Amazon RDS MySQL 8.0 cho Data tier, hoàn toàn cô lập trong private subnet, bật mã hóa, backup tự động và không có public access.
+Creates an Amazon RDS MySQL 8.0 instance for the Data tier, fully isolated in private subnets, with encryption enabled, automated backups, and no public access.
 
 ---
 
-## Tài nguyên được tạo
+## Resources Created
 
-| Resource | Mô tả |
-|----------|-------|
-| `aws_db_subnet_group` | DB Subnet Group — nhóm các private DB subnet |
+| Resource | Description |
+|----------|-------------|
+| `aws_db_subnet_group` | DB Subnet Group — groups the private DB subnets |
 | `aws_db_instance` | RDS MySQL 8.0 instance |
 
 ---
 
-## Cấu hình bảo mật (bắt buộc theo OPA policy)
+## Security Configuration (enforced by OPA policy)
 
-| Thuộc tính | Giá trị | OPA Rule |
-|-----------|---------|----------|
-| `publicly_accessible` | `false` | `security.rego` → deny |
-| `storage_encrypted` | `true` | `security.rego` → deny nếu false |
-| `backup_retention_period` | `7` ngày | `security.rego` → deny nếu < 7 |
-| `db_subnet_group_name` | bắt buộc có | `networking.rego` → deny nếu thiếu |
-| `storage_type` | `gp3` | Hiệu năng tốt hơn gp2 |
-| `auto_minor_version_upgrade` | `true` | Tự động vá bảo mật |
-| `copy_tags_to_snapshot` | `true` | Tags được sao chép vào snapshot |
+| Attribute | Value | OPA Rule |
+|-----------|-------|----------|
+| `publicly_accessible` | `false` | `security.rego` → deny if true |
+| `storage_encrypted` | `true` | `security.rego` → deny if false |
+| `backup_retention_period` | `7` days | `security.rego` → deny if < 7 |
+| `db_subnet_group_name` | required | `networking.rego` → deny if missing |
+| `storage_type` | `gp3` | Better performance than gp2 |
+| `auto_minor_version_upgrade` | `true` | Automatic security patching |
+| `copy_tags_to_snapshot` | `true` | Tags copied to snapshots |
 
 ---
 
-## Cấu hình storage
+## Storage Configuration
 
-| Thuộc tính | Giá trị mặc định | Mô tả |
-|-----------|------------------|-------|
-| `storage_type` | `gp3` | General Purpose SSD thế hệ 3 |
-| `allocated_storage` | `20` GB | Dung lượng khởi đầu |
-| `max_allocated_storage` | `100` GB | Giới hạn tối đa khi autoscale storage |
+| Attribute | Default | Description |
+|-----------|---------|-------------|
+| `storage_type` | `gp3` | General Purpose SSD generation 3 |
+| `allocated_storage` | `20` GB | Initial storage capacity |
+| `max_allocated_storage` | `100` GB | Maximum capacity limit for storage autoscaling |
 
-Storage Autoscaling tự động mở rộng khi dung lượng còn lại dưới 10% hoặc dưới 5 GB.
+Storage Autoscaling automatically expands when remaining capacity falls below 10% or below 5 GB.
 
 ---
 
 ## Variables
 
-| Tên | Kiểu | Mặc định | Mô tả |
-|-----|------|----------|-------|
-| `project_name` | `string` | — | Tên project |
-| `environment` | `string` | — | Môi trường deploy |
-| `db_subnet_ids` | `list(string)` | — | DB Subnet IDs — output từ module `vpc` |
-| `rds_security_group_id` | `string` | — | SG ID — output từ module `security-group` |
-| `db_instance_class` | `string` | `db.t3.micro` | Loại RDS instance |
-| `allocated_storage` | `number` | `20` | Dung lượng ban đầu (GB) |
-| `max_allocated_storage` | `number` | `100` | Dung lượng tối đa autoscale (GB) |
-| `database_name` | `string` | — | Tên database được tạo sẵn |
-| `database_username` | `string` | — | Username master |
-| `database_password` | `string` | — | Password master (**sensitive**) |
-| `multi_az` | `bool` | `false` | Bật Multi-AZ cho HA |
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `project_name` | `string` | — | Project name |
+| `environment` | `string` | — | Deployment environment |
+| `db_subnet_ids` | `list(string)` | — | DB Subnet IDs — output from `vpc` module |
+| `rds_security_group_id` | `string` | — | SG ID — output from `security-group` module |
+| `db_instance_class` | `string` | `db.t3.micro` | RDS instance class |
+| `allocated_storage` | `number` | `20` | Initial storage (GB) |
+| `max_allocated_storage` | `number` | `100` | Maximum autoscale storage (GB) |
+| `database_name` | `string` | — | Name of the database to create |
+| `database_username` | `string` | — | Database master username |
+| `database_password` | `string` | — | Database master password (sensitive) |
+| `multi_az` | `bool` | `false` | Enable Multi-AZ for high availability |
 
 ---
 
 ## Outputs
 
-| Tên | Mô tả |
-|-----|-------|
-| `rds_instance_id` | Identifier của RDS instance — input cho module `monitoring` |
-| `rds_instance_arn` | ARN của RDS instance |
-| `rds_endpoint` | Endpoint đầy đủ (`host:port`) để kết nối |
-| `rds_address` | Hostname của RDS (không có port) |
-| `rds_port` | Port MySQL (3306) |
-| `database_name` | Tên database |
-| `database_username` | Username master (**sensitive**) |
+| Name | Description |
+|------|-------------|
+| `rds_instance_id` | RDS instance identifier — input for the `monitoring` module |
+| `rds_instance_arn` | RDS instance ARN |
+| `rds_endpoint` | Full endpoint (`host:port`) for connections |
+| `rds_address` | RDS hostname (without port) |
+| `database_name` | Database name |
 
 ---
 
-## Cách sử dụng
+## Usage
 
 ```hcl
 module "rds" {
-  source = "../../modules/rds"
-
-  project_name = "three-tier"
-  environment  = "dev"
-
+  source                = "../../modules/rds"
+  project_name          = var.project_name
+  environment           = var.environment
   db_subnet_ids         = module.vpc.db_subnet_ids
   rds_security_group_id = module.security-group.rds_security_group_id
-
-  db_instance_class     = "db.t3.micro"
-  allocated_storage     = 20
-  max_allocated_storage = 100
-
-  database_name     = "appdb"
-  database_username = "admin"
-  database_password = var.database_password  # Từ GitHub Secret
-
-  multi_az = false  # true cho production
+  db_instance_class     = var.db_instance_class
+  allocated_storage     = var.allocated_storage
+  max_allocated_storage = var.max_allocated_storage
+  database_name         = var.database_name
+  database_username     = var.database_username
+  database_password     = var.database_password  # From GitHub Secret
+  multi_az              = var.multi_az
 }
-```
-
-Kết nối từ EC2 App tier:
-
-```bash
-mysql -h <rds_address> -u admin -p appdb
 ```
 
 ---
 
-## Lưu ý
+## Notes
 
-- **Password**: Không hardcode password trong code. Truyền qua biến `database_password` và cấu hình qua GitHub Secret `DB_PASSWORD`.
-- **Multi-AZ**: `multi_az = false` cho dev/lab để giảm chi phí. Production bắt buộc `multi_az = true` — OPA sẽ warn nếu false.
-- **Deletion protection**: Tắt cho lab (`skip_final_snapshot = true`, `deletion_protection = false`). Production nên bật cả hai.
-- **Port bảo vệ**: RDS SG chỉ mở port 3306 từ EC2 SG — không thể kết nối trực tiếp từ máy cá nhân hoặc internet.
-- **Encrypt**: `storage_encrypted = true` sử dụng AWS managed key mặc định. Production có thể dùng KMS Customer Managed Key.
+- **Password**: Do not hardcode passwords in code. Pass via the `database_password` variable configured through GitHub Secret `DB_PASSWORD`.
+- **Multi-AZ**: `multi_az = false` for dev/lab to reduce cost. Production requires `multi_az = true` — OPA will warn if false.
+- **Deletion protection**: Disabled for lab (`skip_final_snapshot = true`, `deletion_protection = false`). Production should enable both.
+- **Port protection**: The RDS SG only opens port 3306 from the EC2 SG — no direct connection from a personal machine or the internet is possible.
+- **Encryption**: `storage_encrypted = true` uses the default AWS managed key. Production can use a KMS Customer Managed Key for more control.

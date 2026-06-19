@@ -1,119 +1,114 @@
 # Module: Application Load Balancer (ALB)
 
-Module tạo Application Load Balancer internet-facing, Target Group và HTTP Listener cho Web tier của kiến trúc ba tầng.
+Creates an internet-facing Application Load Balancer, Target Group, and HTTP Listener for the Web tier of the three-tier architecture.
 
 ---
 
-## Tài nguyên được tạo
+## Resources Created
 
-| Resource | Mô tả |
-|----------|-------|
-| `aws_lb` | Application Load Balancer internet-facing, multi-AZ |
-| `aws_lb_target_group` | Target Group nhận traffic từ ALB, health check mỗi 30 giây |
-| `aws_lb_listener` | HTTP Listener port 80, forward đến Target Group |
+| Resource | Description |
+|----------|-------------|
+| `aws_lb` | Internet-facing ALB, deployed across multiple AZs |
+| `aws_lb_target_group` | Target Group receiving traffic from ALB, health check every 30 seconds |
+| `aws_lb_listener` | HTTP Listener on port 80, forwarding to Target Group |
 
 ---
 
-## Kiến trúc
+## Architecture
 
 ```
 Internet
-    │ HTTP:80 / HTTPS:443
+    │  HTTP (port 80)
     ▼
-┌────────────────────────────────────────────┐
-│       Application Load Balancer            │
-│  internet-facing · multi-AZ · drop headers │
-│  Public Subnet AZ-a | AZ-b | AZ-c         │
-└──────────────────┬─────────────────────────┘
-                   │ HTTP:80
-                   ▼
-        ┌─────────────────────┐
-        │    Target Group     │
-        │  health check: /    │
-        │  interval: 30s      │
-        │  threshold: 2/2     │
-        └──────────┬──────────┘
+┌──────────────────────────────────────────────┐
+│               aws_lb                          │
+│  internet-facing · multi-AZ · drop headers   │
+└──────────────────┬───────────────────────────┘
                    │
-        ┌──────────┴──────────┐
-        ▼                     ▼
-   EC2 AZ-a              EC2 AZ-b ...
+    ┌──────────────┴──────────────┐
+    │       aws_lb_listener       │
+    │         (port 80)           │
+    └──────────┬──────────────────┘
+               │ forward
+        ┌──────┴──────┐
+        │ Target Group │
+        └──────┬───────┘
+               │
+        ┌──────┴──────────┐
+        │  EC2 / ASG       │  (App tier private subnets)
+        └─────────────────┘
 ```
 
 ---
 
-## Cấu hình chi tiết
+## Configuration Details
 
-### Application Load Balancer
+### ALB
 
-| Thuộc tính | Giá trị | Ghi chú |
-|-----------|---------|---------|
+| Attribute | Value | Note |
+|-----------|-------|------|
 | `internal` | `false` | Internet-facing |
-| `load_balancer_type` | `application` | Layer 7 |
-| `drop_invalid_header_fields` | `true` | Bảo mật — CKV_AWS_131 |
-| `enable_deletion_protection` | `false` | Lab environment |
-| `subnets` | Public subnets | Bắt buộc ≥ 2 AZ (OPA check) |
+| `load_balancer_type` | `application` | Application Load Balancer |
+| `drop_invalid_header_fields` | `true` | Security — CKV_AWS_131 |
+| `enable_deletion_protection` | `false` | Disabled for lab; enable for production |
+| `subnets` | Public subnets | At least 2 AZs required (OPA check) |
 
 ### Target Group
 
-| Thuộc tính | Giá trị |
-|-----------|---------|
-| `port` | 80 |
-| `protocol` | HTTP |
-| `target_type` | instance |
+| Attribute | Value |
+|-----------|-------|
+| `port` | `80` |
+| `protocol` | `HTTP` |
+| `target_type` | `instance` |
 | `health_check.path` | `/` |
-| `health_check.interval` | 30 giây |
-| `healthy_threshold` | 2 lần liên tiếp |
-| `unhealthy_threshold` | 2 lần liên tiếp |
-| `health_check.matcher` | `200` |
+| `health_check.interval` | 30 seconds |
+| `healthy_threshold` | 2 consecutive successes |
+| `unhealthy_threshold` | 2 consecutive failures |
 
 ### HTTP Listener
 
-| Thuộc tính | Giá trị |
-|-----------|---------|
-| `port` | 80 |
-| `protocol` | HTTP |
-| `default_action` | Forward → Target Group |
+| Attribute | Value |
+|-----------|-------|
+| `port` | `80` |
+| `protocol` | `HTTP` |
+| `default_action` | `forward` to Target Group |
 
 ---
 
 ## Variables
 
-| Tên | Kiểu | Mô tả |
-|-----|------|-------|
-| `project_name` | `string` | Tên project |
-| `environment` | `string` | Môi trường deploy (`dev`, `prod`) |
-| `vpc_id` | `string` | ID của VPC |
-| `public_subnet_ids` | `list(string)` | ID các Public Subnet (≥ 2 subnet, ≥ 2 AZ) |
-| `alb_security_group_id` | `string` | SG ID cho ALB — output từ module `security-group` |
-| `alb_logs_id` | `string` | ID S3 bucket lưu access log — output từ module `s3` |
+| Name | Type | Description |
+|------|------|-------------|
+| `project_name` | `string` | Project name |
+| `environment` | `string` | Deployment environment (`dev`, `prod`) |
+| `vpc_id` | `string` | VPC ID |
+| `public_subnet_ids` | `list(string)` | Public Subnet IDs (≥ 2 subnets, ≥ 2 AZs) |
+| `alb_security_group_id` | `string` | SG ID for ALB — output from `security-group` module |
+| `alb_logs_id` | `string` | S3 bucket ID for access logs — output from `s3` module |
 
 ---
 
 ## Outputs
 
-| Tên | Mô tả |
-|-----|-------|
-| `alb_id` | ID của ALB |
-| `alb_arn` | ARN của ALB |
-| `alb_arn_suffix` | ARN suffix — dùng làm dimension cho CloudWatch |
-| `alb_dns_name` | DNS name để truy cập ứng dụng |
-| `alb_zone_id` | Zone ID của ALB (dùng cho Route 53 alias) |
-| `target_group_arn` | ARN Target Group — input cho module `ec2`, `autoscaling` |
-| `target_group_name` | Tên Target Group |
-| `target_group_arn_suffix` | ARN suffix Target Group — dùng cho CloudWatch |
-| `http_listener_arn` | ARN HTTP Listener |
+| Name | Description |
+|------|-------------|
+| `alb_id` | ALB ID |
+| `alb_arn` | ALB ARN |
+| `alb_arn_suffix` | ARN suffix — used as a CloudWatch dimension |
+| `alb_dns_name` | DNS name for accessing the application |
+| `alb_zone_id` | ALB Zone ID (for Route 53 alias records) |
+| `target_group_name` | Target Group name |
+| `target_group_arn_suffix` | Target Group ARN suffix — used for CloudWatch |
 
 ---
 
-## Cách sử dụng
+## Usage
 
 ```hcl
 module "alb" {
-  source = "../../modules/alb"
-
-  project_name = "three-tier"
-  environment  = "dev"
-
+  source                = "../../modules/alb"
+  project_name          = var.project_name
+  environment           = var.environment
   vpc_id                = module.vpc.vpc_id
   public_subnet_ids     = module.vpc.public_subnet_ids
   alb_security_group_id = module.security-group.alb_security_group_id
@@ -121,18 +116,18 @@ module "alb" {
 }
 ```
 
-Sau khi deploy, truy cập ứng dụng qua:
+After deployment, access the application at:
 
-```bash
-terraform output -raw alb_dns_name
+```
 # → three-tier-dev-alb-xxxxxxxxx.ap-southeast-1.elb.amazonaws.com
+terraform output alb_dns_name
 ```
 
 ---
 
-## Lưu ý
+## Notes
 
-- **Multi-AZ**: OPA policy (`networking.rego`) sẽ deny nếu ALB deploy trên ít hơn 2 subnet — cần truyền ít nhất 2 public subnet từ 2 AZ khác nhau.
-- **HTTPS**: Listener hiện dùng HTTP (port 80). Production nên thêm HTTPS Listener với ACM certificate và redirect HTTP → HTTPS.
-- **Access logs**: Phần `access_logs` đã được chuẩn bị nhưng comment out. Uncomment và truyền `alb_logs_id` để bật trong production.
-- **WAF**: `CKV2_AWS_28` bị skip. Production nên gắn AWS WAF WebACL vào ALB.
+- **Multi-AZ**: OPA policy (`networking.rego`) will deny if the ALB is deployed across fewer than 2 subnets — always pass at least 2 public subnets from 2 different AZs.
+- **HTTPS**: The listener currently uses HTTP (port 80). Production should add an HTTPS Listener with an ACM certificate and an HTTP → HTTPS redirect.
+- **Access logs**: The `access_logs` block is prepared but commented out. Uncomment and pass `alb_logs_id` to enable in production.
+- **WAF**: `CKV2_AWS_28` is skipped. Production should attach an AWS WAF WebACL to the ALB.
