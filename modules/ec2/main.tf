@@ -13,6 +13,8 @@ resource "aws_instance" "app" {
   subnet_id              = var.app_subnet_ids[count.index]
   vpc_security_group_ids = [var.app_security_group_id]
 
+  iam_instance_profile = var.iam_instance_profile_name
+
   associate_public_ip_address = false
 
   ebs_optimized = true

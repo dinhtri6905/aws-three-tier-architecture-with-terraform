@@ -34,3 +34,7 @@ variable "target_group_arn" {
   type        = string
 }
 
+variable "iam_instance_profile_name" {
+  description = "Name of the IAM Instance Profile attached to EC2 instances (SSM + CloudWatch Agent access)"
+  type        = string
+}

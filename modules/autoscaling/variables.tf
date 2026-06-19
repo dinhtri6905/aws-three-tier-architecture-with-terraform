@@ -24,6 +24,11 @@ variable "app_security_group_id" {
   type        = string
 }
 
+variable "iam_instance_profile_name" {
+  description = "Name of the IAM Instance Profile attached to the Launch Template (SSM + CloudWatch Agent access)"
+  type        = string
+}
+
 variable "app_subnet_ids" {
   description = "Private application subnet IDs"
   type        = list(string)
