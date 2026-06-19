@@ -64,33 +64,77 @@ resource "aws_lb_target_group" "app" {
 # ===== HTTP LISTENER =====
 # When an ACM certificate is supplied (var.certificate_arn != ""), HTTP traffic
 # is redirected to HTTPS instead of being forwarded directly to the Target Group.
-resource "aws_lb_listener" "http" {
-  #checkov:skip=CKV_AWS_2: Listener protocol depends on var.certificate_arn; redirects to HTTPS when a certificate is supplied
-  #checkov:skip=CKV_AWS_103: Listener protocol depends on var.certificate_arn; redirects to HTTPS when a certificate is supplied
+# resource "aws_lb_listener" "http" {
+#   #checkov:skip=CKV_AWS_2: Listener protocol depends on var.certificate_arn; redirects to HTTPS when a certificate is supplied
+#   #checkov:skip=CKV_AWS_103: Listener protocol depends on var.certificate_arn; redirects to HTTPS when a certificate is supplied
 
+#   load_balancer_arn = aws_lb.main.arn
+
+#   port     = 80
+#   protocol = "HTTP"
+
+#   dynamic "default_action" {
+#     for_each = var.certificate_arn != "" ? [1] : []
+#     content {
+#       type = "redirect"
+
+#       redirect {
+#         port        = "443"
+#         protocol    = "HTTPS"
+#         status_code = "HTTP_301"
+#       }
+#     }
+#   }
+
+#   dynamic "default_action" {
+#     for_each = var.certificate_arn == "" ? [1] : []
+#     content {
+#       type             = "forward"
+#       target_group_arn = aws_lb_target_group.app.arn
+#     }
+#   }
+
+#   tags = {
+#     Name = "${local.name_prefix}-http-listener"
+#   }
+# }
+
+# # ===== HTTPS LISTENER =====
+# # Only created when var.certificate_arn is set (e.g. production). Requires an
+# # ACM certificate already issued/validated for the ALB's domain.
+# resource "aws_lb_listener" "https" {
+#   count = var.certificate_arn != "" ? 1 : 0
+
+#   load_balancer_arn = aws_lb.main.arn
+
+#   port            = 443
+#   protocol        = "HTTPS"
+#   ssl_policy      = var.ssl_policy
+#   certificate_arn = var.certificate_arn
+
+#   default_action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.app.arn
+#   }
+
+#   tags = {
+#     Name = "${local.name_prefix}-https-listener"
+#   }
+# }
+
+resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
 
   port     = 80
   protocol = "HTTP"
 
-  dynamic "default_action" {
-    for_each = var.certificate_arn != "" ? [1] : []
-    content {
-      type = "redirect"
+  default_action {
+    type = "redirect"
 
-      redirect {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-  }
-
-  dynamic "default_action" {
-    for_each = var.certificate_arn == "" ? [1] : []
-    content {
-      type             = "forward"
-      target_group_arn = aws_lb_target_group.app.arn
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
     }
   }
 
@@ -99,12 +143,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# ===== HTTPS LISTENER =====
-# Only created when var.certificate_arn is set (e.g. production). Requires an
-# ACM certificate already issued/validated for the ALB's domain.
 resource "aws_lb_listener" "https" {
-  count = var.certificate_arn != "" ? 1 : 0
-
   load_balancer_arn = aws_lb.main.arn
 
   port            = 443

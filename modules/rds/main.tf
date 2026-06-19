@@ -21,6 +21,7 @@ resource "aws_db_instance" "main" {
   #checkov:skip=CKV_AWS_161: IAM database authentication not required for lab environment
   #checkov:skip=CKV_AWS_157: Multi-AZ disabled for cost optimization in lab environment
   #checkov:skip=CKV_AWS_118: Enhanced monitoring not required for lab environment
+  #checkov:skip=CKV_AWS_293: Deletion protection disabled for development environment
 
   identifier = "${local.name_prefix}-mysql"
 
