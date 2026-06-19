@@ -27,13 +27,11 @@ variable "db_instance_class" {
 variable "allocated_storage" {
   description = "Initial allocated storage (GB)"
   type        = number
-  default     = 20
 }
 
 variable "max_allocated_storage" {
   description = "Maximum autoscaling storage (GB)"
   type        = number
-  default     = 100
 }
 
 variable "database_name" {
@@ -49,17 +47,14 @@ variable "database_username" {
 variable "multi_az" {
   description = "Enable Multi-AZ deployment"
   type        = bool
-  default     = false
 }
 
 variable "deletion_protection" {
   description = "Enable RDS deletion protection. Should be true for production."
   type        = bool
-  default     = false
 }
 
 variable "skip_final_snapshot" {
   description = "Skip taking a final snapshot when the RDS instance is destroyed. Should be false for production."
   type        = bool
-  default     = true
 }

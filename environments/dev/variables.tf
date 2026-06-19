@@ -180,7 +180,6 @@ variable "skip_final_snapshot" {
   default     = true
 }
 
-
 # ============================================================
 # MONITORING 
 # ============================================================
@@ -201,7 +200,7 @@ variable "asg_cpu_low_threshold" {
   type        = number
   default     = 20
 }
-###
+
 variable "rds_cpu_high_threshold" {
   description = "RDS CPU high threshold (%)"
   type        = number

@@ -19,7 +19,6 @@ variable "aws_region" {
 variable "sns_email" {
   description = "Email address for alerts. Leave empty to disable."
   type        = string
-  default     = ""
 }
 
 # ============================================================
@@ -79,7 +78,6 @@ variable "target_group_arn_suffix" {
 variable "alb_5xx_threshold" {
   description = "Number of 5xx errors per minute before alarm"
   type        = number
-  default     = 10
 }
 
 variable "alb_response_time_threshold" {

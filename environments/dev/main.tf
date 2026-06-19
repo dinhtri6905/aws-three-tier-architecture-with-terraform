@@ -62,7 +62,7 @@ module "alb" {
   alb_logs_id = module.s3.alb_logs_id
 
   certificate_arn = var.certificate_arn
-  ssl_policy = var.ssl_policy
+  ssl_policy      = var.ssl_policy
 }
 
 # ============================================================

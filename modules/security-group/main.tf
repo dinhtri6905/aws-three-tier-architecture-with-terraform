@@ -156,7 +156,7 @@ resource "aws_security_group_rule" "rds_ingress_mysql" {
 # ===== RDS outbound =====
 resource "aws_security_group_rule" "rds_egress_all" {
   #checkov:skip=CKV_AWS_382: Wide egress required for lab environment
-  
+
   type              = "egress"
   description       = "Allow outbound traffic"
   from_port         = 0
