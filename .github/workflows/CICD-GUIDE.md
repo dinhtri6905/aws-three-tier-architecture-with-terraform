@@ -29,7 +29,7 @@ Before running any workflow, ensure the following are ready:
 |------|----------|---------|
 | AWS Account + IAM User | Required | terraform-cd, check-scan |
 | S3 Bucket for Terraform state | Required | terraform-cd, check-scan |
-| GitHub Secrets (5 variables) | Required | All 3 workflows |
+| GitHub Secrets (4 variables) | Required | All 3 workflows |
 | GitHub Environments | Required | terraform-cd |
 | `terraform.tfvars` file in `environments/dev/` | Required | terraform-cd, check-scan |
 | Slack Webhook URL | Optional | All 3 workflows |
@@ -252,7 +252,6 @@ Create the following 5 secrets:
 | `AWS_ACCESS_KEY_ID` | Access key ID from Step 1.3 | Required |
 | `AWS_SECRET_ACCESS_KEY` | Secret access key from Step 1.3 | Required |
 | `BUCKET_TF_STATE` | S3 bucket name from Step 2 | Required |
-| `DB_PASSWORD` | RDS password (minimum 8 characters) | Required |
 | `SLACK_WEBHOOK_URL` | Webhook URL from Slack App | Optional |
 
 ### Create Slack Webhook (optional, for notifications)
