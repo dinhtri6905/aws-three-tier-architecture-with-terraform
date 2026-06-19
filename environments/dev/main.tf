@@ -49,6 +49,9 @@ module "alb" {
   alb_security_group_id = module.security-group.alb_security_group_id
 
   alb_logs_id = module.s3.alb_logs_id
+
+  certificate_arn = var.certificate_arn
+  ssl_policy = var.ssl_policy
 }
 
 # ============================================================

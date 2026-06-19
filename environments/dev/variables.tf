@@ -80,7 +80,17 @@ variable "availability_zones" {
 # ============================================================
 # APPLICATION LOAD BALANCER 
 # ============================================================
+variable "certificate_arn" {
+  description = "ARN of the ACM certificate used for the HTTPS listener. Leave empty to keep HTTP-only (e.g. dev/lab). When set, an HTTPS listener (443) is created and HTTP (80) redirects to it."
+  type        = string
+  default     = ""
+}
 
+variable "ssl_policy" {
+  description = "SSL security policy for the HTTPS listener"
+  type        = string
+  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+}
 
 # ============================================================
 # EC2 
