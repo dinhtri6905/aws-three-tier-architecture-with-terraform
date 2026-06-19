@@ -1,10 +1,14 @@
 name: Terraform CI
 
-# Chay tren moi push len develop/feature va moi Pull Request vao develop.
-# Khong can AWS credentials - tat ca buoc dung -backend=false.
-# 
-# Luong chay:
-#   validate --> tflint, tfsec, checkov (song song) -->ci-summary (tong hop ket qua, comment PR, notify Slack)
+# Runs on every push to the develop and feature branches,
+# as well as on every Pull Request targeting the develop branch.
+#
+# AWS credentials are not required because all Terraform commands
+# use -backend=false and do not interact with remote state.
+#
+# Execution Flow:
+#   validate --> tflint, tfsec, checkov (in parallel)
+#            --> ci-summary (aggregate results, comment on PR, and notify Slack)
 
 on:
   push:
@@ -42,7 +46,8 @@ on:
 env:
   AWS_REGION: ap-southeast-1
   TERRAFORM_VERSION: 1.8.0
-  # Neu la feature branch thi soft_fail = true, khong block CI
+  # For feature branches, soft_fail = true is enabled,
+  # meaning findings are reported but do not fail or block the CI pipeline.
   SOFT_FAIL: ${{ startsWith(github.ref, 'refs/heads/feature/') }}
 
 # =============================================================================
@@ -225,8 +230,10 @@ jobs:
           additional_args: "--exclude-downloaded-modules --no-color"
 
 # =============================================================================
-# JOB 4: Checkov - CIS compliance, security misconfiguration
-# SARIF duoc upload len GitHub Security tab.
+# JOB 4: Checkov - CIS Compliance and Security Misconfiguration Scan
+# Performs compliance and security configuration checks.
+# SARIF results are uploaded to the GitHub Security tab
+# for centralized visibility and tracking.
 # =============================================================================
   checkov:
     if: |
@@ -302,7 +309,10 @@ jobs:
             });
 
 # =============================================================================
-# JOB 5: CI Summary - tong hop ket qua, comment PR, notify Slack
+# JOB 5: CI Summary
+# Aggregate results from all validation and security scanning jobs,
+# generate a workflow summary, post a comment on the Pull Request,
+# and send a notification to Slack.
 # =============================================================================
   ci-summary:
     name: CI Summary

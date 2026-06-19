@@ -1,46 +1,46 @@
-## Mô hình kiến trúc tổng thể 
+## Architecture Diagram
 
 ![CICD_Pipeline](../../images/cicd_pipeline.png)
 
 ---
 
-# Hướng dẫn chạy CI/CD Pipeline
+# CI/CD Pipeline Setup Guide
 
-## Mục lục
+## Table of Contents
 
-1. [Điều kiện tiên quyết](#1-dieu-kien-tien-quyet)
-2. [Bước 1 — Tạo IAM User trên AWS](#buoc-1--tao-iam-user-tren-aws)
-3. [Bước 2 — Tạo S3 Bucket lưu Terraform State](#buoc-2--tao-s3-bucket-luu-terraform-state)
-4. [Bước 3 — Cấu hình GitHub Secrets](#buoc-3--cau-hinh-github-secrets)
-5. [Bước 4 — Cấu hình GitHub Environments](#buoc-4--cau-hinh-github-environments)
-6. [Bước 5 — Kiểm tra cấu trúc file bắt buộc](#buoc-5--kiem-tra-cau-truc-file-bat-buoc)
-7. [Cách chạy terraform-ci.yml](#cach-chay-terraform-ciyml)
-8. [Cách chạy terraform-cd.yml](#cach-chay-terraform-cdyml)
-9. [Cách chạy check-scan.yml](#cach-chay-check-scanyml)
-10. [Xử lý lỗi thường gặp](#xu-ly-loi-thuong-gap)
-
----
-
-## 1. Điều kiện tiên quyết
-
-Trước khi chạy bất kỳ workflow nào, cần chuẩn bị đủ các mục sau:
-
-| Mục | Bắt buộc | Dùng bởi |
-|-----|----------|----------|
-| AWS Account + IAM User | Bắt buộc | terraform-cd, check-scan |
-| S3 Bucket cho Terraform state | Bắt buộc | terraform-cd, check-scan |
-| GitHub Secrets (5 biến) | Bắt buộc | Cả 3 workflow |
-| GitHub Environments | Bắt buộc | terraform-cd |
-| File `terraform.tfvars` trong `environments/dev/` | Bắt buộc | terraform-cd, check-scan |
-| Slack Webhook URL | Tùy chọn | Cả 3 workflow |
+1. [Prerequisites](#1-prerequisites)
+2. [Step 1 — Create IAM User on AWS](#step-1--create-iam-user-on-aws)
+3. [Step 2 — Create S3 Bucket for Terraform State](#step-2--create-s3-bucket-for-terraform-state)
+4. [Step 3 — Configure GitHub Secrets](#step-3--configure-github-secrets)
+5. [Step 4 — Configure GitHub Environments](#step-4--configure-github-environments)
+6. [Step 5 — Verify Required File Structure](#step-5--verify-required-file-structure)
+7. [How to run terraform-ci.yml](#how-to-run-terraform-ciyml)
+8. [How to run terraform-cd.yml](#how-to-run-terraform-cdyml)
+9. [How to run check-scan.yml](#how-to-run-check-scanyml)
+10. [Troubleshooting Common Errors](#troubleshooting-common-errors)
 
 ---
 
-## Bước 1 — Tạo IAM User trên AWS
+## 1. Prerequisites
 
-CI/CD cần một IAM User với quyền đủ để tạo toàn bộ hạ tầng three-tier.
+Before running any workflow, ensure the following are ready:
 
-### 1.1 Tạo IAM User
+| Item | Required | Used by |
+|------|----------|---------|
+| AWS Account + IAM User | Required | terraform-cd, check-scan |
+| S3 Bucket for Terraform state | Required | terraform-cd, check-scan |
+| GitHub Secrets (5 variables) | Required | All 3 workflows |
+| GitHub Environments | Required | terraform-cd |
+| `terraform.tfvars` file in `environments/dev/` | Required | terraform-cd, check-scan |
+| Slack Webhook URL | Optional | All 3 workflows |
+
+---
+
+## Step 1 — Create IAM User on AWS
+
+CI/CD requires an IAM User with sufficient permissions to provision the entire three-tier infrastructure.
+
+### 1.1 Create IAM User
 
 ```
 AWS Console -> IAM -> Users -> Create user
@@ -48,9 +48,9 @@ User name: github-actions-dev
 Access type: Programmatic access (Access key)
 ```
 
-### 1.2 Gán IAM Policy
+### 1.2 Attach IAM Policy
 
-Tạo một custom policy với tên `GitHubActionsDeployPolicy` và dán nội dung sau:
+Create a custom policy named `GitHubActionsDeployPolicy` and paste the following content:
 
 ```json
 {
@@ -147,42 +147,42 @@ Tạo một custom policy với tên `GitHubActionsDeployPolicy` và dán nội 
 }
 ```
 
-> Thay `YOUR-BUCKET-NAME` bằng tên S3 bucket sẽ tạo ở Bước 2.
+> Replace `YOUR-BUCKET-NAME` with the S3 bucket name you will create in Step 2.
 
-### 1.3 Lấy Access Key
+### 1.3 Retrieve Access Key
 
 ```
 IAM -> Users -> github-actions-dev -> Security credentials
 -> Create access key -> Application running outside AWS
 ```
 
-Lưu lại:
-- `Access key ID` → sẽ dùng cho secret `AWS_ACCESS_KEY_ID`
-- `Secret access key` → sẽ dùng cho secret `AWS_SECRET_ACCESS_KEY`
+Save:
+- `Access key ID` → will be used for secret `AWS_ACCESS_KEY_ID`
+- `Secret access key` → will be used for secret `AWS_SECRET_ACCESS_KEY`
 
 ---
 
-## Bước 2 — Tạo S3 Bucket lưu Terraform State
+## Step 2 — Create S3 Bucket for Terraform State
 
-Terraform cần một S3 bucket để lưu state file. Bucket này phải tạo **trước** khi chạy CI/CD.
+Terraform requires an S3 bucket to store the state file. The bucket must be created **before** running CI/CD.
 
-### 2.1 Tạo bucket bằng AWS CLI
+### 2.1 Create bucket using AWS CLI
 
 ```bash
-# Thay YOUR-BUCKET-NAME bằng tên bucket của bạn (phải unique toàn cầu)
-# Ví dụ: three-tier-terraform-state-2026
+# Replace YOUR-BUCKET-NAME with your bucket name (must be globally unique)
+# Example: three-tier-terraform-state-2026
 
 aws s3api create-bucket \
   --bucket YOUR-BUCKET-NAME \
   --region ap-southeast-1 \
   --create-bucket-configuration LocationConstraint=ap-southeast-1
 
-# Bat versioning (quan trong - de rollback state neu can)
+# Enable versioning (important — allows state rollback if needed)
 aws s3api put-bucket-versioning \
   --bucket YOUR-BUCKET-NAME \
   --versioning-configuration Status=Enabled
 
-# Bat encryption
+# Enable encryption
 aws s3api put-bucket-encryption \
   --bucket YOUR-BUCKET-NAME \
   --server-side-encryption-configuration '{
@@ -200,7 +200,7 @@ aws s3api put-public-access-block \
     "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
 ```
 
-### 2.2 Tạo DynamoDB Table cho State Locking (khuyến nghị)
+### 2.2 Create DynamoDB Table for State Locking (recommended)
 
 ```bash
 aws dynamodb create-table \
@@ -211,7 +211,7 @@ aws dynamodb create-table \
   --region ap-southeast-1
 ```
 
-### 2.3 Cấu hình backend.tf trong environments/dev/
+### 2.3 Configure backend.tf in environments/dev/
 
 ```hcl
 # environments/dev/backend.tf
@@ -226,8 +226,10 @@ terraform {
 }
 ```
 
-### 2.4 Còn cách khác: cd backend
+### 2.4 Alternative: use the backend/ Terraform module
+
 ```bash
+cd backend/
 terraform init
 terraform plan
 terraform apply
@@ -235,83 +237,83 @@ terraform apply
 
 ---
 
-## Bước 3 — Cấu hình GitHub Secrets
+## Step 3 — Configure GitHub Secrets
 
-Vào repository GitHub:
+In your GitHub repository:
 
 ```
 Settings -> Secrets and variables -> Actions -> New repository secret
 ```
 
-Tạo đủ 5 secrets sau:
+Create the following 5 secrets:
 
-| Secret Name | Giá trị | Bắt buộc |
-|-------------|---------|----------|
-| `AWS_ACCESS_KEY_ID` | Access key ID lấy ở Bước 1.3 | Bắt buộc |
-| `AWS_SECRET_ACCESS_KEY` | Secret access key lấy ở Bước 1.3 | Bắt buộc |
-| `BUCKET_TF_STATE` | Tên S3 bucket lấy ở Bước 2 | Bắt buộc |
-| `DB_PASSWORD` | Password cho RDS (ít nhất 8 ký tự) | Bắt buộc |
-| `SLACK_WEBHOOK_URL` | Webhook URL từ Slack App | Tùy chọn |
+| Secret Name | Value | Required |
+|-------------|-------|----------|
+| `AWS_ACCESS_KEY_ID` | Access key ID from Step 1.3 | Required |
+| `AWS_SECRET_ACCESS_KEY` | Secret access key from Step 1.3 | Required |
+| `BUCKET_TF_STATE` | S3 bucket name from Step 2 | Required |
+| `DB_PASSWORD` | RDS password (minimum 8 characters) | Required |
+| `SLACK_WEBHOOK_URL` | Webhook URL from Slack App | Optional |
 
-### Tạo Slack Webhook (nếu muốn nhận thông báo)
+### Create Slack Webhook (optional, for notifications)
 
 ```
 Slack -> Apps -> Incoming Webhooks -> Add to Slack
--> Chọn channel -> Copy Webhook URL
+-> Select channel -> Copy Webhook URL
 ```
 
 ---
 
-## Bước 4 — Cấu hình GitHub Environments
+## Step 4 — Configure GitHub Environments
 
-Environments dùng để kiểm soát việc deploy (có thể thêm manual approval).
+Environments are used to control deployments (can include manual approval gates).
 
 ```
 GitHub Repo -> Settings -> Environments -> New environment
 ```
 
-Tạo 2 environments:
+Create 2 environments:
 
 **Environment `development`**
 ```
 Name: development
-Protection rules: (không cần reviewer cho dev)
+Protection rules: (no reviewer required for dev)
 ```
 
-**Environment `production`** (dùng cho sau khi mở rộng sang prod)
+**Environment `production`** (for future prod expansion)
 ```
 Name: production
 Protection rules:
-  - Required reviewers: [thêm tên reviewer]
+  - Required reviewers: [add reviewer names]
   - Wait timer: 0 minutes
 ```
 
-> Hiện tại chỉ deploy dev, production environment có thể tạo trước để sẵn sàng.
+> Currently only deploys dev. The production environment can be created now to be ready when needed.
 
 ---
 
-## Bước 5 — Kiểm tra cấu trúc file bắt buộc
+## Step 5 — Verify Required File Structure
 
-Trước khi push code, kiểm tra đủ các file sau trong repository:
+Before pushing code, confirm the following files exist in the repository:
 
 ```
 AWS-Three-Tier-Architecture/
 │
 ├── .github/
 │   └── workflows/
-│       ├── terraform-ci.yml       <- File vừa tạo
-│       ├── terraform-cd.yml       <- File vừa tạo
-│       └── check-scan.yml         <- File vừa tạo
+│       ├── terraform-ci.yml       <- Workflow file
+│       ├── terraform-cd.yml       <- Workflow file
+│       └── check-scan.yml         <- Workflow file
 │
 ├── environments/
 │   └── dev/
-│       ├── backend.tf             <- Cau hinh S3 backend (Buoc 2.3)
-│       ├── main.tf                <- Goi cac module
+│       ├── backend.tf             <- S3 backend config (Step 2.3)
+│       ├── main.tf                <- Module calls
 │       ├── variables.tf
 │       ├── outputs.tf
 │       ├── providers.tf
 │       ├── versions.tf
-│       └── terraform.tfvars       <- Gia tri bien thuc te (QUAN TRONG)
+│       └── terraform.tfvars       <- Actual variable values (IMPORTANT)
 │
 ├── modules/
 │   ├── vpc/
@@ -323,17 +325,17 @@ AWS-Three-Tier-Architecture/
 │   └── monitoring/
 │
 └── policies/
-    ├── security.rego              <- File vua tao
-    ├── networking.rego            <- File vua tao
-    └── compliance.rego            <- File vua tao
+    ├── security.rego
+    ├── networking.rego
+    └── compliance.rego
 ```
 
-### File terraform.tfvars mẫu
+### Sample terraform.tfvars file
 
 ```hcl
 # environments/dev/terraform.tfvars
 
-# Thong tin chung
+# General
 environment = "dev"
 project     = "three-tier-arch"
 aws_region  = "ap-southeast-1"
@@ -358,7 +360,7 @@ db_engine           = "mysql"
 db_engine_version   = "8.0"
 db_name             = "appdb"
 db_username         = "admin"
-# db_password duoc truyen qua TF_VAR_db_password tu GitHub Secret
+# db_password is passed via TF_VAR_db_password from GitHub Secret
 
 # Tags
 tags = {
@@ -370,19 +372,19 @@ tags = {
 
 ---
 
-## Cách chạy terraform-ci.yml
+## How to run terraform-ci.yml
 
-File này chạy **tự động**, không cần thao tác thủ công.
+This file runs **automatically** — no manual action required.
 
-### Khi nào tự động chạy
+### When it runs automatically
 
 ```
-Push code lên nhánh develop   ->  CI chạy ngay
-Push code lên nhánh feature/* ->  CI chạy ngay (SOFT_FAIL=true, lỗi scan không block)
-Tạo Pull Request vào develop  ->  CI chạy và comment kết quả lên PR
+Push code to develop branch   ->  CI runs immediately
+Push code to feature/* branch ->  CI runs immediately (SOFT_FAIL=true, scan errors don't block)
+Create Pull Request to develop ->  CI runs and comments results on PR
 ```
 
-### Luồng chạy chi tiết
+### Detailed flow
 
 ```
 [Push/PR]
@@ -399,21 +401,21 @@ validate (fmt check + init -backend=false + validate)
                        |
                        v
                   ci-summary
-         (comment PR + Slack notify)
+         (PR comment + Slack notify)
 ```
 
-### Xem kết quả
+### Viewing results
 
-- **GitHub Actions tab**: xem log chi tiết từng step
-- **Pull Request**: 5 comment tự động (validate, tflint, checkov, tfsec, summary)
-- **Security tab** (GitHub): kết quả Checkov dưới dạng SARIF
-- **Artifacts**: tải `tflint-report.json`, `checkov-report` về xem offline
+- **GitHub Actions tab**: view detailed logs per step
+- **Pull Request**: 5 automatic comments (validate, tflint, checkov, tfsec, summary)
+- **Security tab** (GitHub): Checkov results as SARIF
+- **Artifacts**: download `tflint-report.json`, `checkov-report` for offline review
 
 ---
 
-## Cách chạy terraform-cd.yml
+## How to run terraform-cd.yml
 
-### Trường hợp 1 — Auto deploy (push lên develop)
+### Case 1 — Auto deploy (push to develop)
 
 ```bash
 git checkout develop
@@ -422,16 +424,16 @@ git commit -m "feat: add vpc module"
 git push origin develop
 ```
 
-Sau khi push, GitHub Actions tự động:
+After pushing, GitHub Actions automatically runs:
 
 ```
-push len develop
+push to develop
     |
     v
 plan (terraform plan + export JSON)
     |
     v
-opa-gate (kiem tra 3 policy file)
+opa-gate (checks 3 policy files)
     |           |
   FAIL         PASS
     |           |
@@ -442,76 +444,76 @@ opa-gate (kiem tra 3 policy file)
            notify Slack
 ```
 
-### Trường hợp 2 — Chạy thủ công (workflow_dispatch)
+### Case 2 — Manual run (workflow_dispatch)
 
 ```
 GitHub Repo -> Actions -> Terraform CD -> Run workflow
 ```
 
-Chọn `action`:
+Select `action`:
 
-| action | Kết quả |
-|--------|---------|
-| `plan` | Chỉ chạy terraform plan, xem trước thay đổi, không apply |
+| action | Result |
+|--------|--------|
+| `plan` | Runs terraform plan only, previews changes, does not apply |
 | `apply` | plan -> OPA gate -> apply |
-| `destroy` | Xóa toàn bộ hạ tầng dev |
+| `destroy` | Destroys all dev infrastructure |
 
-**Quan trọng với `destroy`**: workflow sẽ yêu cầu xác nhận qua GitHub Environment approval trước khi thực sự xóa.
+**Important with `destroy`**: the workflow requires confirmation through GitHub Environment approval before actually destroying.
 
-### Xem kết quả plan
-
-```
-Actions -> Terraform CD -> [run cụ thể] -> plan job -> Step Summary
-```
-
-Nội dung plan được in đầy đủ trong Step Summary, bao gồm số resource sẽ create/update/destroy.
-
-### Xem kết quả OPA
+### Viewing plan results
 
 ```
-Actions -> Terraform CD -> [run cụ thể] -> opa-gate job
+Actions -> Terraform CD -> [specific run] -> plan job -> Step Summary
 ```
 
-Mỗi step OPA in ra:
+The full plan is printed in Step Summary, including the count of resources to create/update/destroy.
+
+### Viewing OPA results
+
 ```
-# Nếu pass:
+Actions -> Terraform CD -> [specific run] -> opa-gate job
+```
+
+Each OPA step prints:
+```
+# If pass:
 Security: PASS (0 violations)
 
-# Nếu fail:
+# If fail:
 --- Security violations: 2 ---
-  [DENY] RDS instance 'module.rds.aws_db_instance.main': storage_encrypted phai la true
-  [DENY] Security Group Rule '...': SSH (port 22) khong duoc mo ra internet
+  [DENY] RDS instance 'module.rds.aws_db_instance.main': storage_encrypted must be true
+  [DENY] Security Group Rule '...': SSH (port 22) must not be open to the internet
 ```
 
 ---
 
-## Cách chạy check-scan.yml
+## How to run check-scan.yml
 
-### Trường hợp 1 — Tự động (hàng ngày 2:00 AM GMT+7)
+### Case 1 — Automatic (daily at 2:00 AM GMT+7)
 
-Không cần làm gì. Workflow tự chạy theo cron `0 19 * * *` (19:00 UTC = 02:00 GMT+7).
+No action needed. The workflow runs automatically on cron `0 19 * * *` (19:00 UTC = 02:00 GMT+7).
 
-### Trường hợp 2 — Chạy thủ công
+### Case 2 — Manual run
 
 ```
 GitHub Repo -> Actions -> Security and Compliance Scan -> Run workflow
 ```
 
-Chọn `scan_type`:
+Select `scan_type`:
 
-| scan_type | Chạy gì |
-|-----------|---------|
+| scan_type | Runs |
+|-----------|------|
 | `all` | OPA full scan + tfsec deep |
-| `opa-only` | Chỉ OPA với plan JSON mới nhất |
-| `tfsec-only` | Chỉ tfsec deep scan |
+| `opa-only` | OPA only with the latest plan JSON |
+| `tfsec-only` | tfsec deep scan only |
 
-### Xem báo cáo
+### Viewing reports
 
 ```
-Actions -> [run cụ thể] -> Summary tab
+Actions -> [specific run] -> Summary tab
 ```
 
-Step Summary hiển thị bảng tổng hợp:
+Step Summary displays an aggregated table:
 
 ```
 ## Security and Compliance Scan Summary - DEV
@@ -529,98 +531,98 @@ Scan date: 2024-01-15 19:00 UTC
 Issues found: 5
 ```
 
-Tải artifact để xem chi tiết:
+Download artifact for details:
 ```
-Actions -> [run cụ thể] -> Artifacts
+Actions -> [specific run] -> Artifacts
   - opa-full-report    (opa-results.json)
   - tfsec-deep-report  (tfsec-report.json)
 ```
 
 ---
 
-## Xử lý lỗi thường gặp
+## Troubleshooting Common Errors
 
-### Lỗi 1: `Error: No valid credential sources found`
-
-```
-Nguyên nhân : GitHub Secret AWS_ACCESS_KEY_ID hoặc AWS_SECRET_ACCESS_KEY sai/thiếu
-Cách fix    : Settings -> Secrets -> Kiểm tra lại 2 secret này
-              Đảm bảo IAM User còn active và Access Key chưa bị disable
-```
-
-### Lỗi 2: `Error: Failed to get existing workspaces: S3 bucket does not exist`
+### Error 1: `Error: No valid credential sources found`
 
 ```
-Nguyên nhân : Bucket trong BUCKET_TF_STATE chưa tồn tại hoặc tên sai
-Cách fix    : Chạy lại Bước 2 để tạo bucket
-              Kiểm tra tên bucket trong secret khớp với backend.tf
+Cause : GitHub Secret AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY is wrong or missing
+Fix   : Settings -> Secrets -> Verify both secrets
+        Ensure IAM User is still active and Access Key is not disabled
 ```
 
-### Lỗi 3: `terraform fmt -check failed`
+### Error 2: `Error: Failed to get existing workspaces: S3 bucket does not exist`
 
 ```
-Nguyên nhân : Code Terraform chưa được format đúng chuẩn
-Cách fix    : Chạy local trước khi push:
-              cd environments/dev && terraform fmt -recursive
+Cause : Bucket in BUCKET_TF_STATE does not exist or name is incorrect
+Fix   : Re-run Step 2 to create the bucket
+        Verify bucket name in the secret matches backend.tf
 ```
 
-### Lỗi 4: OPA gate fail với violation
+### Error 3: `terraform fmt -check failed`
 
 ```
-Nguyên nhân : Infrastructure code vi phạm policy trong policies/*.rego
-Cách fix    : Đọc thông báo [DENY] trong log để biết resource nào vi phạm
-              Sửa lại Terraform code theo yêu cầu của policy
-              Ví dụ: thêm storage_encrypted = true vào aws_db_instance
+Cause : Terraform code is not properly formatted
+Fix   : Run locally before pushing:
+        cd environments/dev && terraform fmt -recursive
 ```
 
-### Lỗi 5: `TFLint: Failed to initialize plugins`
+### Error 4: OPA gate fails with violations
 
 ```
-Nguyên nhân : Network timeout khi download AWS ruleset
-Cách fix    : Re-run job (thường là lỗi tạm thời)
-              Hoặc commit file .tflint.hcl vào repo thay vì generate inline
+Cause : Infrastructure code violates a policy in policies/*.rego
+Fix   : Read the [DENY] message in the log to identify which resource is in violation
+        Fix the Terraform code to comply with the policy
+        Example: add storage_encrypted = true to aws_db_instance
 ```
 
-### Lỗi 6: Checkov fail nhưng muốn bỏ qua một số check
+### Error 5: `TFLint: Failed to initialize plugins`
 
 ```
-Nguyên nhân : Một số check CIS không áp dụng cho môi trường dev
-Cách fix    : Thêm skip_check vào checkov-action trong terraform-ci.yml
-              Ví dụ:
-                skip_check: CKV_AWS_144,CKV_AWS_117
-              
-              Hoặc thêm comment inline vào Terraform:
-                #checkov:skip=CKV_AWS_144: Dev environment, no cross-region replication needed
+Cause : Network timeout when downloading AWS ruleset
+Fix   : Re-run the job (usually a transient error)
+        Or commit .tflint.hcl to the repo instead of generating it inline
 ```
 
-### Lỗi 7: `Plan JSON exported but OPA returns no results`
+### Error 6: Checkov fails but you want to skip certain checks
 
 ```
-Nguyên nhân : Package name trong rego file không khớp với query path
-Cách fix    : Kiểm tra dòng đầu của từng file:
-              security.rego   -> package terraform.security
-              networking.rego -> package terraform.networking
-              compliance.rego -> package terraform.compliance
-              
-              Query trong workflow phải là:
-              data.terraform.security.deny
-              data.terraform.networking.deny
-              data.terraform.compliance.deny
+Cause : Some CIS checks do not apply to the dev environment
+Fix   : Add skip_check to the checkov-action in terraform-ci.yml
+        Example:
+          skip_check: CKV_AWS_144,CKV_AWS_117
+
+        Or add an inline comment in Terraform:
+          #checkov:skip=CKV_AWS_144: Dev environment, no cross-region replication needed
+```
+
+### Error 7: `Plan JSON exported but OPA returns no results`
+
+```
+Cause : Package name in the rego file does not match the query path
+Fix   : Check the first line of each file:
+        security.rego   -> package terraform.security
+        networking.rego -> package terraform.networking
+        compliance.rego -> package terraform.compliance
+
+        Query in the workflow must be:
+        data.terraform.security.deny
+        data.terraform.networking.deny
+        data.terraform.compliance.deny
 ```
 
 ---
 
-## Tóm tắt checklist trước khi chạy lần đầu
+## Pre-run Checklist
 
 ```
-[ ] IAM User tạo xong, có Access Key + Secret Key
-[ ] IAM Policy gán đủ quyền cho IAM User
-[ ] S3 bucket tạo xong, versioning + encryption đã bật
-[ ] DynamoDB table tạo xong (cho state locking)
-[ ] backend.tf trong environments/dev/ trỏ đúng bucket
-[ ] terraform.tfvars trong environments/dev/ có đủ biến
-[ ] 5 GitHub Secrets đã cấu hình (4 bắt buộc + 1 Slack)
-[ ] 2 GitHub Environments đã tạo (development, production)
-[ ] 6 file CI/CD đã commit vào đúng đường dẫn
-[ ] Chạy thử local: cd environments/dev && terraform init && terraform validate
+[ ] IAM User created with Access Key + Secret Key
+[ ] IAM Policy attached with sufficient permissions
+[ ] S3 bucket created with versioning + encryption enabled
+[ ] DynamoDB table created (for state locking)
+[ ] backend.tf in environments/dev/ points to correct bucket
+[ ] terraform.tfvars in environments/dev/ has all required variables
+[ ] 5 GitHub Secrets configured (4 required + 1 Slack)
+[ ] 2 GitHub Environments created (development, production)
+[ ] CI/CD workflow files committed to the correct paths
+[ ] Local test passed: cd environments/dev && terraform init && terraform validate
 ```

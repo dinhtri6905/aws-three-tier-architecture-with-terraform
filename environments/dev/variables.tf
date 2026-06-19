@@ -168,57 +168,56 @@ variable "multi_az" {
 # ============================================================
 # MONITORING 
 # ============================================================
-
 variable "sns_email" {
-  description = "Email nhan canh bao CloudWatch. De trong neu khong can"
+  description = "Email address to receive CloudWatch alerts. Leave empty to disable."
   type        = string
-  default     = "nguyendinhtri060905@gmail.com"
+  default     = ""
 }
 
 variable "asg_cpu_high_threshold" {
-  description = "Nguong CPU cao cua ASG (%), alarm khi CPU > nguong nay"
+  description = "ASG CPU high threshold (%), alarm triggers when CPU exceeds this value"
   type        = number
   default     = 80
 }
 
 variable "asg_cpu_low_threshold" {
-  description = "Nguong CPU thap cua ASG (%), alarm khi CPU < nguong nay"
+  description = "ASG CPU low threshold (%), alarm triggers when CPU drops below this value"
   type        = number
   default     = 20
 }
 ###
 variable "rds_cpu_high_threshold" {
-  description = "Nguong CPU cao cua RDS (%)"
+  description = "RDS CPU high threshold (%)"
   type        = number
   default     = 80
 }
 
 variable "rds_free_storage_threshold" {
-  description = "Nguong dung luong RDS con lai (bytes). Mac dinh 5 GB"
+  description = "RDS free storage threshold (bytes). Default is 5 GB"
   type        = number
   default     = 5368709120
 }
 
 variable "rds_connections_threshold" {
-  description = "Nguong so ket noi RDS dong thoi"
+  description = "Maximum number of concurrent RDS connections threshold"
   type        = number
   default     = 100
 }
 
 variable "alb_5xx_threshold" {
-  description = "So luong loi 5xx ALB trong 1 phut"
+  description = "Number of ALB 5xx errors per minute threshold"
   type        = number
   default     = 10
 }
 
 variable "alb_response_time_threshold" {
-  description = "Response time trung binh cua ALB (giay), alarm khi vuot nguong nay"
+  description = "Average ALB response time (seconds), alarm triggers when this threshold is exceeded"
   type        = number
   default     = 2
 }
 
 variable "log_retention_days" {
-  description = "So ngay giu log trong CloudWatch Log Group"
+  description = "Number of days to retain logs in CloudWatch Log Groups"
   type        = number
   default     = 14
 
@@ -227,7 +226,7 @@ variable "log_retention_days" {
       [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653],
       var.log_retention_days
     )
-    error_message = "log_retention_days phai la gia tri hop le cua CloudWatch: 1, 3, 5, 7, 14, 30, 60, 90, ..."
+    error_message = "log_retention_days must be a valid CloudWatch Logs retention period: 1, 3, 5, 7, 14, 30, 60, 90, ..."
   }
 }
 

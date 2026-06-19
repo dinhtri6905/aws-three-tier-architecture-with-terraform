@@ -1,44 +1,44 @@
 # Environment: Prod
 
-Cấu hình Terraform cho môi trường **Production** của kiến trúc ba tầng AWS. Môi trường prod sử dụng cấu hình mạnh hơn, bật Multi-AZ, deletion protection và tuân thủ nghiêm ngặt theo CIS AWS Foundations Benchmark v1.5.0.
+Terraform configuration for the **Production** environment of the AWS three-tier architecture. The prod environment uses stronger sizing, enables Multi-AZ, enables deletion protection, and strictly follows CIS AWS Foundations Benchmark v1.5.0.
 
 ---
 
-## Trạng thái hiện tại
+## Current Status
 
-> **Môi trường production chưa được cấu hình.** Các file hiện tại (`main.tf`, `variables.tf`, `outputs.tf`, v.v.) đang để trống. Cần điền đầy đủ trước khi deploy lên production.
+> **Production environment is not yet configured.** The current files (`main.tf`, `variables.tf`, `outputs.tf`, etc.) are empty. They must be fully populated before deploying to production.
 
 ---
 
-## Cấu trúc file
+## File Structure
 
 ```
 environments/prod/
 ├── backend.tf          # Remote state: s3://bucket/prod/terraform.tfstate
-├── main.tf             # Gọi các module (chưa cấu hình)
-├── variables.tf        # Khai báo biến (chưa cấu hình)
-├── outputs.tf          # Outputs (chưa cấu hình)
-├── providers.tf        # AWS provider (chưa cấu hình)
-└── versions.tf         # Terraform version (chưa cấu hình)
+├── main.tf             # Module calls (not yet configured)
+├── variables.tf        # Variable declarations (not yet configured)
+├── outputs.tf          # Outputs (not yet configured)
+├── providers.tf        # AWS provider (not yet configured)
+└── versions.tf         # Terraform version (not yet configured)
 ```
 
 ---
 
-## Khác biệt so với Dev
+## Differences from Dev
 
-| Thuộc tính | Dev | Production |
+| Attribute | Dev | Production |
 |-----------|-----|------------|
-| `instance_type` | `t3.micro` | `t3.medium` hoặc lớn hơn |
-| `db_instance_class` | `db.t3.micro` | `db.t3.medium` hoặc lớn hơn |
-| `multi_az` | `false` | **`true`** — bắt buộc |
-| `deletion_protection` | `false` | **`true`** — bắt buộc |
-| `skip_final_snapshot` | `true` | **`false`** — lưu snapshot trước destroy |
-| `min_size` ASG | `1` | `2` trở lên |
-| `log_retention_days` | `7` | `30` hoặc lâu hơn |
-| ALB access_logs | Tắt | **Bật** |
-| HTTPS Listener | Tắt | **Bật** (ACM certificate) |
-| WAF | Không có | Khuyến nghị gắn WAF |
-| CloudTrail | Không có | **Bắt buộc** (OPA compliance deny) |
+| `instance_type` | `t3.micro` | `t3.medium` or larger |
+| `db_instance_class` | `db.t3.micro` | `db.t3.medium` or larger |
+| `multi_az` | `false` | **`true`** — required |
+| `deletion_protection` | `false` | **`true`** — required |
+| `skip_final_snapshot` | `true` | **`false`** — save snapshot before destroy |
+| `min_size` ASG | `1` | `2` or more |
+| `log_retention_days` | `7` | `30` or longer |
+| ALB access_logs | Disabled | **Enabled** |
+| HTTPS Listener | Disabled | **Enabled** (ACM certificate) |
+| WAF | None | Recommended |
+| CloudTrail | None | **Required** (OPA compliance deny) |
 
 ---
 
@@ -57,13 +57,13 @@ terraform {
 }
 ```
 
-State của prod được lưu tách biệt với dev tại key `prod/terraform.tfstate`.
+The prod state is stored separately from dev at key `prod/terraform.tfstate`.
 
 ---
 
-## Hướng dẫn cấu hình production
+## Production Configuration Guide
 
-### 1. Copy cấu hình từ dev
+### 1. Copy configuration from dev
 
 ```bash
 cp environments/dev/main.tf environments/prod/main.tf
@@ -73,7 +73,7 @@ cp environments/dev/providers.tf environments/prod/providers.tf
 cp environments/dev/versions.tf environments/prod/versions.tf
 ```
 
-### 2. Tạo terraform.tfvars cho prod
+### 2. Create terraform.tfvars for prod
 
 ```hcl
 # environments/prod/terraform.tfvars
@@ -83,7 +83,7 @@ environment  = "prod"
 aws_region   = "ap-southeast-1"
 
 # Network
-vpc_cidr            = "10.1.0.0/16"  # CIDR khác dev
+vpc_cidr            = "10.1.0.0/16"  # Different CIDR from dev
 availability_zones  = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
 public_subnet_cidrs = ["10.1.1.0/24", "10.1.2.0/24", "10.1.3.0/24"]
 app_subnets_cidrs   = ["10.1.11.0/24", "10.1.12.0/24", "10.1.13.0/24"]
@@ -93,7 +93,7 @@ db_subnets_cidrs    = ["10.1.21.0/24", "10.1.22.0/24", "10.1.23.0/24"]
 ami_id        = "ami-0543dbdaf4e114be7"
 instance_type = "t3.medium"
 
-# Auto Scaling — min 2 instance
+# Auto Scaling — minimum 2 instances
 desired_capacity = 3
 min_size         = 2
 max_size         = 10
@@ -104,8 +104,8 @@ allocated_storage     = 50
 max_allocated_storage = 500
 database_name         = "appdb"
 database_username     = "admin"
-database_password     = ""  # Từ GitHub Secret
-multi_az              = true  # BẮT BUỘC cho production
+database_password     = ""  # From GitHub Secret
+multi_az              = true  # REQUIRED for production
 
 # Monitoring
 sns_email                   = "oncall@company.com"
@@ -119,39 +119,39 @@ alb_response_time_threshold = 1
 log_retention_days          = 30
 ```
 
-### 3. Cập nhật module RDS cho production
+### 3. Update the RDS module for production
 
-Trong `environments/prod/main.tf`, thêm vào module `rds`:
+In `environments/prod/main.tf`, add to the `rds` module:
 
 ```hcl
 module "rds" {
   # ...
   multi_az            = true
-  deletion_protection = true   # Thêm variable này
-  skip_final_snapshot = false  # Lưu snapshot khi destroy
+  deletion_protection = true   # Add this variable
+  skip_final_snapshot = false  # Save snapshot on destroy
 }
 ```
 
 ---
 
-## Checklist trước khi deploy production
+## Pre-deployment Checklist
 
-- [ ] `multi_az = true` trong module RDS
-- [ ] `deletion_protection = true` trong module RDS
-- [ ] `skip_final_snapshot = false` trong module RDS
-- [ ] HTTPS Listener và ACM certificate được cấu hình trong module ALB
-- [ ] ALB access logs bật và trỏ vào S3 bucket
-- [ ] CloudTrail được tạo (OPA `compliance.rego` sẽ deny nếu thiếu)
-- [ ] GitHub Environment `production` có protection rules: required reviewers
-- [ ] Slack webhook cấu hình để nhận thông báo deploy
-- [ ] `sns_email` điền đúng email team on-call
-- [ ] `log_retention_days` đặt ≥ 30 ngày
+- [ ] `multi_az = true` in RDS module
+- [ ] `deletion_protection = true` in RDS module
+- [ ] `skip_final_snapshot = false` in RDS module
+- [ ] HTTPS Listener and ACM certificate configured in ALB module
+- [ ] ALB access logs enabled and pointing to S3 bucket
+- [ ] CloudTrail created (OPA `compliance.rego` will deny if missing)
+- [ ] GitHub Environment `production` has protection rules: required reviewers
+- [ ] Slack webhook configured to receive deploy notifications
+- [ ] `sns_email` set to the on-call team email address
+- [ ] `log_retention_days` set to ≥ 30 days
 
 ---
 
-## CI/CD cho Production
+## CI/CD for Production
 
-Production không tự động deploy. Chỉ deploy qua `workflow_dispatch` với action `apply`, và yêu cầu xác nhận qua GitHub Environment `production`:
+Production does not auto-deploy. Deploy only via `workflow_dispatch` with action `apply`, requiring confirmation through the GitHub Environment `production`:
 
 ```
 workflow_dispatch (action=apply)

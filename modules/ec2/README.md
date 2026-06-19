@@ -1,34 +1,34 @@
 # Module: EC2
 
-Module tạo EC2 instances cho Application tier, đặt trong private subnet, cấu hình bảo mật IMDSv2, mã hóa EBS và tự động đăng ký vào ALB Target Group.
+Creates EC2 instances for the Application tier, placed in private subnets, with IMDSv2 security, EBS encryption, and automatic registration into the ALB Target Group.
 
 ---
 
-## Tài nguyên được tạo
+## Resources Created
 
-| Resource | Số lượng | Mô tả |
-|----------|----------|-------|
-| `aws_instance` | N (theo số App Subnet) | EC2 application server, 1 instance per AZ |
-| `aws_lb_target_group_attachment` | N | Đăng ký từng instance vào ALB Target Group |
+| Resource | Count | Description |
+|----------|-------|-------------|
+| `aws_instance` | N (one per App Subnet) | EC2 application server, 1 instance per AZ |
+| `aws_lb_target_group_attachment` | N | Registers each instance into the ALB Target Group |
 
 ---
 
-## Cấu hình bảo mật
+## Security Configuration
 
-| Thuộc tính | Giá trị | Tiêu chuẩn |
-|-----------|---------|-----------|
-| `associate_public_ip_address` | `false` | Không có public IP |
-| `http_tokens` | `required` | IMDSv2 bắt buộc — CKV_AWS_79 |
-| `http_endpoint` | `enabled` | IMDS endpoint bật nhưng chỉ IMDSv2 |
-| `root_block_device.encrypted` | `true` | Mã hóa EBS root volume — CKV_AWS_8 |
-| `ebs_optimized` | `true` | Tối ưu EBS throughput |
-| `subnet_id` | App private subnet | Không deploy lên public subnet |
+| Attribute | Value | Standard |
+|-----------|-------|---------|
+| `associate_public_ip_address` | `false` | No public IP |
+| `http_tokens` | `required` | IMDSv2 enforced — CKV_AWS_79 |
+| `http_endpoint` | `enabled` | IMDS endpoint enabled, IMDSv2 only |
+| `root_block_device.encrypted` | `true` | EBS root volume encrypted — CKV_AWS_8 |
+| `ebs_optimized` | `true` | Optimized EBS throughput |
+| `subnet_id` | App private subnet | Not deployed in public subnet |
 
 ---
 
 ## User Data
 
-Khi instance khởi động lần đầu, user data tự động cài đặt và chạy Apache HTTP server:
+On first boot, user data automatically installs and runs Apache HTTP server:
 
 ```bash
 #!/bin/bash
@@ -43,54 +43,34 @@ echo "<h1>Three-Tier Architecture App Server $(hostname)</h1>" > /var/www/html/i
 
 ## Variables
 
-| Tên | Kiểu | Mô tả |
-|-----|------|-------|
-| `project_name` | `string` | Tên project |
-| `environment` | `string` | Môi trường deploy (`dev`, `prod`) |
-| `ami_id` | `string` | AMI ID — khuyến nghị dùng Amazon Linux 2023 |
-| `instance_type` | `string` | Loại instance (ví dụ: `t3.micro`) |
-| `app_subnet_ids` | `list(string)` | Danh sách App Subnet ID — output từ module `vpc` |
-| `app_security_group_id` | `string` | SG ID cho EC2 — output từ module `security-group` |
-| `target_group_arn` | `string` | ARN ALB Target Group — output từ module `alb` |
+| Name | Type | Description |
+|------|------|-------------|
+| `project_name` | `string` | Project name |
+| `environment` | `string` | Deployment environment (`dev`, `prod`) |
+| `ami_id` | `string` | AMI ID — recommended: Amazon Linux 2023 |
+| `instance_type` | `string` | Instance type (e.g. `t3.micro`) |
+| `app_subnet_ids` | `list(string)` | App Subnet ID list — output from the `vpc` module |
+| `app_security_group_id` | `string` | SG ID for EC2 — output from `security-group` module |
+| `target_group_arn` | `string` | ALB Target Group ARN — output from the `alb` module |
 
-> **AMI gợi ý**: `ami-0543dbdaf4e114be7` (Amazon Linux 2) hoặc `ami-0d105bf3c7d10a264` — kiểm tra AMI mới nhất theo region `ap-southeast-1` trước khi deploy.
+> **Suggested AMI**: `ami-0543dbdaf4e114be7` (Amazon Linux 2) or `ami-0d105bf3c7d10a264` — verify the latest AMI for region `ap-southeast-1` before deploying.
 
 ---
 
 ## Outputs
 
-| Tên | Mô tả |
-|-----|-------|
-| `instance_ids` | List ID của các EC2 instance |
-| `private_ips` | List private IP của từng instance |
-| `private_dns` | List private DNS name của từng instance |
-| `availability_zones` | List AZ mà các instance được deploy |
+| Name | Description |
+|------|-------------|
+| `instance_ids` | List of EC2 instance IDs |
+| `private_ips` | List of private IPs per instance |
+| `private_dns` | List of private DNS names per instance |
+| `availability_zones` | List of AZs the instances are deployed in |
 
 ---
 
-## Cách sử dụng
+## Notes
 
-```hcl
-module "ec2" {
-  source = "../../modules/ec2"
-
-  project_name = "three-tier"
-  environment  = "dev"
-
-  ami_id        = "ami-0543dbdaf4e114be7"
-  instance_type = "t3.micro"
-
-  app_subnet_ids        = module.vpc.app_subnet_ids
-  app_security_group_id = module.security-group.app_security_group_id
-  target_group_arn      = module.alb.target_group_arn
-}
-```
-
----
-
-## Lưu ý
-
-- **EC2 vs ASG**: Module `ec2` tạo các instance static (fixed), còn module `autoscaling` tạo instance dynamic qua Launch Template. Cả hai đều đăng ký vào cùng Target Group. Trong production nên ưu tiên dùng `autoscaling` để có khả năng scale tự động.
-- **SSH**: Không có key pair được cấu hình. Truy cập instance qua **AWS Systems Manager Session Manager** (không cần mở port 22).
-- **IAM Role**: `CKV2_AWS_41` bị skip. Production nên gắn IAM Instance Profile để cấp quyền SSM, CloudWatch Agent, v.v.
-- **Monitoring**: `CKV_AWS_126` bị skip — Detailed Monitoring tính phí thêm, cân nhắc bật cho production.
+- **EC2 vs ASG**: The `ec2` module creates static (fixed) instances, while the `autoscaling` module creates dynamic instances via Launch Template. Both register to the same Target Group. In production, prefer `autoscaling` for automatic scaling capability.
+- **SSH**: No key pair is configured. Access instances via **AWS Systems Manager Session Manager** (no port 22 needed).
+- **IAM Role**: `CKV2_AWS_41` is skipped. Production should attach an IAM Instance Profile to grant SSM, CloudWatch Agent, etc. permissions.
+- **Monitoring**: `CKV_AWS_126` is skipped — Detailed Monitoring incurs additional cost; consider enabling for production.
