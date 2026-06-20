@@ -314,7 +314,6 @@ Checks: S3, CloudTrail, IAM — aligned with CIS AWS Foundations Benchmark v1.5.
 | `AWS_ACCESS_KEY_ID` | IAM User access key |
 | `AWS_SECRET_ACCESS_KEY` | IAM User secret key |
 | `BUCKET_TF_STATE` | S3 bucket name for Terraform state |
-| `DB_PASSWORD` | RDS master password (minimum 8 characters) |
 | `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL (optional) |
 
 See `CICD-GUIDE.md` for step-by-step instructions on creating each item above.
