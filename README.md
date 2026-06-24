@@ -19,24 +19,7 @@ A production-style AWS three-tier infrastructure deployed entirely with **Terraf
 
 ## Architecture Overview
 
-```
-Internet
-    │
-    ▼
-┌──────────────────────────────────────────────────────────────┐  Public Subnet
-│   Application Load Balancer  (internet-facing, multi-AZ)     │  ap-southeast-1a/b/c
-└──────────────────────────────────────────────────────────────┘
-    │  HTTP/HTTPS
-    ▼
-┌──────────────────────────────────────────────────────────────┐  Private Subnet
-│   EC2 Application Servers  +  Auto Scaling Group             │  ap-southeast-1a/b/c
-└──────────────────────────────────────────────────────────────┘
-    │  App port only (from App SG)
-    ▼
-┌──────────────────────────────────────────────────────────────┐  Private Subnet (DB)
-│   RDS MySQL / PostgreSQL  (encrypted, no public access)      │  ap-southeast-1a/b/c
-└──────────────────────────────────────────────────────────────┘
-```
+![Three-Tier-Architecture](images/aws-three-tier.png)
 
 Internet traffic enters only through the ALB. The App tier resides in private subnets and only accepts connections from the ALB Security Group. RDS resides in a dedicated DB subnet group and only accepts connections from the App tier Security Group — no direct internet route exists.
 
